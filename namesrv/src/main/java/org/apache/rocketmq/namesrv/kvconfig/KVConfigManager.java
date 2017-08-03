@@ -58,7 +58,7 @@ public class KVConfigManager {
             }
         }
     }
-
+    //更新路由
     public void putKVConfig(final String namespace, final String key, final String value) {
         try {
             this.lock.writeLock().lockInterruptibly();
@@ -87,7 +87,7 @@ public class KVConfigManager {
 
         this.persist();
     }
-
+    //持久化路由信息
     public void persist() {
         try {
             this.lock.readLock().lockInterruptibly();
