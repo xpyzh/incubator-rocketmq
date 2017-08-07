@@ -14,17 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.rocketmq.remoting.netty;
 
 public class NettyClientConfig {
+
     /**
      * Worker thread number
      */
     private int clientWorkerThreads = 4;
+
     private int clientCallbackExecutorThreads = Runtime.getRuntime().availableProcessors();
+
+    /**
+     * Semaphore to limit maximum number of on-going one-way requests, which protects system memory footprint.
+     */
     private int clientOnewaySemaphoreValue = NettySystemConfig.CLIENT_ONEWAY_SEMAPHORE_VALUE;
+
+    /**
+     * Semaphore to limit maximum number of on-going asynchronous requests, which protects system memory footprint.
+     */
     private int clientAsyncSemaphoreValue = NettySystemConfig.CLIENT_ASYNC_SEMAPHORE_VALUE;
+
     private int connectTimeoutMillis = 3000;
+
     private long channelNotActiveInterval = 1000 * 60;
 
     /**
@@ -34,8 +47,11 @@ public class NettyClientConfig {
     private int clientChannelMaxIdleTimeSeconds = 120;
 
     private int clientSocketSndBufSize = NettySystemConfig.socketSndbufSize;
+
     private int clientSocketRcvBufSize = NettySystemConfig.socketRcvbufSize;
+
     private boolean clientPooledByteBufAllocatorEnable = false;
+
     private boolean clientCloseSocketIfTimeout = false;
 
     public boolean isClientCloseSocketIfTimeout() {

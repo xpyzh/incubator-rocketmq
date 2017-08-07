@@ -144,14 +144,14 @@ public class RemotingCommand {
     public static RemotingCommand decode(final ByteBuffer byteBuffer) {
         int length = byteBuffer.limit();
         int oriHeaderLen = byteBuffer.getInt();
-        int headerLength = getHeaderLength(oriHeaderLen);
+        int headerLength = getHeaderLength(oriHeaderLen);//去除协议的8位，获取实际header长度的24位
 
         byte[] headerData = new byte[headerLength];
         byteBuffer.get(headerData);
 
         RemotingCommand cmd = headerDecode(headerData, getProtocolType(oriHeaderLen));
 
-        int bodyLength = length - 4 - headerLength;
+        int bodyLength = length - 4 - headerLength;//总长度-header头部的4位-header内容的长度=后面body的长度
         byte[] bodyData = null;
         if (bodyLength > 0) {
             bodyData = new byte[bodyLength];
@@ -162,6 +162,7 @@ public class RemotingCommand {
         return cmd;
     }
 
+    //最大长度为2的24次方，如果超过，截断
     public static int getHeaderLength(int length) {
         return length & 0xFFFFFF;
     }
@@ -208,10 +209,15 @@ public class RemotingCommand {
         return true;
     }
 
+    /**
+     * soucre是header的长度
+     * @author youzhihao
+     */
     public static byte[] markProtocolType(int source, SerializeType type) {
         byte[] result = new byte[4];
-
+        //把序列化的byte类型放在长度的前8位
         result[0] = type.getCode();
+        //后面的souce长度,统一向右移8位
         result[1] = (byte) ((source >> 16) & 0xFF);
         result[2] = (byte) ((source >> 8) & 0xFF);
         result[3] = (byte) (source & 0xFF);
