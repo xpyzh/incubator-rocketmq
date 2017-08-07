@@ -27,6 +27,7 @@ public class SemaphoreReleaseOnlyOnce {
         this.semaphore = semaphore;
     }
 
+    //这个设计可以参考，加一个AtomicBoolean，来确保这个方法只执行一次
     public void release() {
         if (this.semaphore != null) {
             if (this.released.compareAndSet(false, true)) {
