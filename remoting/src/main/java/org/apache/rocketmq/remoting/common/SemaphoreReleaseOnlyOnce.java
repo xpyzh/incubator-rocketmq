@@ -19,6 +19,7 @@ package org.apache.rocketmq.remoting.common;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+//封装Semaphore变量，通过这个对象,保证Semaphore能释放一个许可,做到线程安全
 public class SemaphoreReleaseOnlyOnce {
     private final AtomicBoolean released = new AtomicBoolean(false);
     private final Semaphore semaphore;

@@ -52,6 +52,7 @@ public class NettyClientConfig {
 
     private boolean clientPooledByteBufAllocatorEnable = false;
 
+    //客户端连接超时是否关闭该channel的开关
     private boolean clientCloseSocketIfTimeout = false;
 
     public boolean isClientCloseSocketIfTimeout() {

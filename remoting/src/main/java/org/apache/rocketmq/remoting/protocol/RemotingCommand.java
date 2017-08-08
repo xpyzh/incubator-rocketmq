@@ -438,7 +438,10 @@ public class RemotingCommand {
 
         return result;
     }
-
+    //用这种方式的目的，是在一个int里面，存储好几种不同类型的标记，
+    //目前以2进制来看:
+    //第1位:用来标志请求类型,0:是请求命令，1:是返回命令
+    //第2位:用来标志请求是否是单向的，0:非单向,1:单向
     public void markOnewayRPC() {
         int bits = 1 << RPC_ONEWAY;
         this.flag |= bits;

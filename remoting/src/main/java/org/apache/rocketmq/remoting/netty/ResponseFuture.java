@@ -30,7 +30,7 @@ public class ResponseFuture {
     private final long beginTimestamp = System.currentTimeMillis();
     private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
-    //这个信号量暂时没看出来有什么用
+    //这个是用来获取server或者client对应的Semaphore，然后在处理完之后释放，详细看NettyRemotingAbstract.invokeAsyncImpl
     private final SemaphoreReleaseOnlyOnce once;
 
     private final AtomicBoolean executeCallbackOnlyOnce = new AtomicBoolean(false);
@@ -65,6 +65,7 @@ public class ResponseFuture {
         return diff > this.timeoutMillis;
     }
 
+    //等待返回，这里使用一个countDownLatch来做等待条件，支持多线程同时等待
     public RemotingCommand waitResponse(final long timeoutMillis) throws InterruptedException {
         this.countDownLatch.await(timeoutMillis, TimeUnit.MILLISECONDS);
         return this.responseCommand;
