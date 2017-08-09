@@ -71,6 +71,7 @@ public class RemotingUtil {
      * 另一点原因就是获取事件的时候，它无须遍历整个被侦听的描述符集，只要遍历那些被内核IO事件异步唤醒而加入Ready队列的描述符集合就行了。
      * epoll除了提供select/poll那种IO事件的电平触发（Level Triggered）外，还提供了边沿触发（Edge Triggered），
      * 这就使得用户空间程序有可能缓存IO状态，减少epoll_wait/epoll_pwait的调用，提高应用程序效率
+     * 这个是原生的nio使用的，netty框架没必要自己openSelector
      * */
     public static Selector openSelector() throws IOException {
         Selector result = null;

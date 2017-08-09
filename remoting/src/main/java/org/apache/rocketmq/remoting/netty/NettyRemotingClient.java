@@ -183,6 +183,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                     }
                 });
         //这里为什么不用ScheduledThreadPoolExecutor
+        //This method is periodically invoked to scan and expire deprecated request.
         this.timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -558,6 +559,11 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         }
     }
 
+
+    /**
+     * 注册处理器，和具体的excutorService挂钩
+     * @author youzhihao
+     */
     @Override
     public void registerProcessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
         ExecutorService executorThis = executor;
