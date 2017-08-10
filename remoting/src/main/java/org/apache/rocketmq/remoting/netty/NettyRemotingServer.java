@@ -163,7 +163,13 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                         return new Thread(r, "NettyServerCodecThread_" + this.threadIndex.incrementAndGet());
                     }
                 });
-        //这里要注意，ServerBootstrapg够惨函数的第一个参数是处理连接的，第二个参数是处理handler的
+        /**
+        * 这里要注意，ServerBootstrapg构造函数
+        * 第一个group是处理serverChannel的，当连接进来，创建一个新的clientChannel，然后分配childGroup去处理后续的事件和io
+        * 第二个group是处理clientChannel的事件和io的
+        * 这里创建了第三个group，DefaultEventExecutorGroup用来处理自定义的handler，这些handler是cpu相对密集型，最好用独立的group处理，
+        * 从而不影响clientChannel事件和io处理的效率
+        */
         ServerBootstrap childHandler =
                 this.serverBootstrap.group(this.eventLoopGroupBoss, this.eventLoopGroupSelector)
                         .channel(useEpoll() ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
@@ -206,6 +212,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                         .childHandler(new ChannelInitializer<SocketChannel>() {
                             @Override
                             public void initChannel(SocketChannel ch) throws Exception {
+                                //这里很关键，增加一个group用来处理自定义的handler，这些handler是io密集型
                                 ch.pipeline().addLast(
                                         defaultEventExecutorGroup,
                                         new NettyEncoder(),
@@ -420,5 +427,10 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
             RemotingUtil.closeChannel(ctx.channel());
         }
+    }
+    public static void main(String[] args)
+    {
+        new NettyRemotingServer(new NettyServerConfig()).start();
+
     }
 }
