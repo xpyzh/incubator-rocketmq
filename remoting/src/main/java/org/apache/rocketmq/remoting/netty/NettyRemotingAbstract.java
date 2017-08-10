@@ -251,9 +251,10 @@ public abstract class NettyRemotingAbstract {
             responseFuture.setResponseCommand(cmd);
             responseFuture.release();
             responseTable.remove(opaque);
+            //有异步回调，则调用
             if (responseFuture.getInvokeCallback() != null) {
                 executeInvokeCallback(responseFuture);
-            } else {
+            } else {//同步调用，则塞入cmd,取消等待结果线程的阻塞
                 responseFuture.putResponse(cmd);
             }
         } else {
