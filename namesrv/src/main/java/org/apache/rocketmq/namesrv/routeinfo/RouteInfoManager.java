@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 
 public class RouteInfoManager {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
-    private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
+    private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;//2min
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
@@ -406,6 +406,7 @@ public class RouteInfoManager {
         return null;
     }
 
+
     public void scanNotActiveBroker() {
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {
@@ -458,6 +459,7 @@ public class RouteInfoManager {
                     this.filterServerTable.remove(brokerAddrFound);
                     String brokerNameFound = null;
                     boolean removeBrokerName = false;
+                    //根据ip地址，移除brokerAddrTable中对应的BrokerData内的ip地址,并找到对应的brokerName
                     Iterator<Entry<String, BrokerData>> itBrokerAddrTable =
                         this.brokerAddrTable.entrySet().iterator();
                     while (itBrokerAddrTable.hasNext() && (null == brokerNameFound)) {
@@ -476,7 +478,7 @@ public class RouteInfoManager {
                                 break;
                             }
                         }
-
+                        //如果brokerData内的ip地址为空，则清楚这个BrokerData
                         if (brokerData.getBrokerAddrs().isEmpty()) {
                             removeBrokerName = true;
                             itBrokerAddrTable.remove();
@@ -486,6 +488,7 @@ public class RouteInfoManager {
                     }
 
                     if (brokerNameFound != null && removeBrokerName) {
+                        //HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
                         Iterator<Entry<String, Set<String>>> it = this.clusterAddrTable.entrySet().iterator();
                         while (it.hasNext()) {
                             Entry<String, Set<String>> entry = it.next();
@@ -508,6 +511,7 @@ public class RouteInfoManager {
                     }
 
                     if (removeBrokerName) {
+                        //private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
                         Iterator<Entry<String, List<QueueData>>> itTopicQueueTable =
                             this.topicQueueTable.entrySet().iterator();
                         while (itTopicQueueTable.hasNext()) {
