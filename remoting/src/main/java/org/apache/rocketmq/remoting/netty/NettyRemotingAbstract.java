@@ -248,6 +248,7 @@ public abstract class NettyRemotingAbstract {
         final int opaque = cmd.getOpaque();
         final ResponseFuture responseFuture = responseTable.get(opaque);
         if (responseFuture != null) {
+            //issues:这里为什么要set一下，这样后面如果走下面分支，又putResponse一次，重复set了一下cmd对象
             responseFuture.setResponseCommand(cmd);
             responseFuture.release();
             responseTable.remove(opaque);

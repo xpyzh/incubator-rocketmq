@@ -247,10 +247,11 @@ public class MixAll {
         printObjectProperties(log, object, false);
     }
 
+    //打印对象中所有的属性到log里
     public static void printObjectProperties(final Logger log, final Object object, final boolean onlyImportantField) {
         Field[] fields = object.getClass().getDeclaredFields();
         for (Field field : fields) {
-            if (!Modifier.isStatic(field.getModifiers())) {
+            if (!Modifier.isStatic(field.getModifiers())) {//不打印静态属性
                 String name = field.getName();
                 if (!name.startsWith("this")) {
                     Object value = null;
@@ -331,6 +332,8 @@ public class MixAll {
         return properties;
     }
 
+    //这里是读取属性文件中的内容，如果有相关属性，则覆盖object配置类中相关属性
+    //基于的原则，属性文件中的key和对象中set方法名去掉set前缀后首字母小写，例如setName======name
     public static void properties2Object(final Properties p, final Object object) {
         Method[] methods = object.getClass().getMethods();
         for (Method method : methods) {

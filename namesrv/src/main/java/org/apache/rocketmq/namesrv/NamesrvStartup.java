@@ -60,8 +60,9 @@ public class NamesrvStartup {
 
         try {
             //PackageConflictDetect.detectFastjson();
-
+            //增加命令行参数，这边是走main函数的args传入的，具体是在programAguments加参数，例如-h
             Options options = ServerUtil.buildCommandlineOptions(new Options());
+            //增加namesrv特有参数，并且解析所有参数，获得CommandLine对象
             commandLine = ServerUtil.parseCmdLine("mqnamesrv", args, buildCommandlineOptions(options), new PosixParser());
             if (null == commandLine) {
                 System.exit(-1);
@@ -71,12 +72,15 @@ public class NamesrvStartup {
             final NamesrvConfig namesrvConfig = new NamesrvConfig();
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
             nettyServerConfig.setListenPort(9876);
+            //解析配置文件
+            //Option opt = new Option("c", "configFile", true, "Name server config properties file");
             if (commandLine.hasOption('c')) {
                 String file = commandLine.getOptionValue('c');
                 if (file != null) {
                     InputStream in = new BufferedInputStream(new FileInputStream(file));
                     properties = new Properties();
                     properties.load(in);
+                    //读取属性文件，覆盖相关默认配置
                     MixAll.properties2Object(properties, namesrvConfig);
                     MixAll.properties2Object(properties, nettyServerConfig);
 
@@ -86,20 +90,24 @@ public class NamesrvStartup {
                     in.close();
                 }
             }
-
+            //opt = new Option("p", "printConfigItem", false, "Print all config item");
+            //如果有p参数的话，打印所有namesrvConfig，nettyServerConfig配置信息，并终止程序
+            //issues:这块代码好像不起作用，MixAll.printObjectProperties方法不传入log对象的话，实现代码不打印任何东西
             if (commandLine.hasOption('p')) {
+                //这里大的出来吗？log里面传null，好像代码里面打不出来
                 MixAll.printObjectProperties(null, namesrvConfig);
                 MixAll.printObjectProperties(null, nettyServerConfig);
                 System.exit(0);
             }
 
+            //优先级最高的是命令行参数传入的namesrvConfig配置，如果有则覆盖原有的
             MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
 
             if (null == namesrvConfig.getRocketmqHome()) {
                 System.out.printf("Please set the " + MixAll.ROCKETMQ_HOME_ENV + " variable in your environment to match the location of the RocketMQ installation%n");
                 System.exit(-2);
             }
-
+            //logback日志启动，这个可以参考，直接代码里启动，不依赖第三方配置
             LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
             JoranConfigurator configurator = new JoranConfigurator();
             configurator.setContext(lc);
@@ -109,10 +117,11 @@ public class NamesrvStartup {
 
             MixAll.printObjectProperties(log, namesrvConfig);
             MixAll.printObjectProperties(log, nettyServerConfig);
-
+            //合并完namesrvConfig和nettyServerConfig配置参数类后，创建NamesrvController对象
             final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig);
 
             // remember all configs to prevent discard
+            //issues:这块的加载顺序是不是有问题
             controller.getConfiguration().registerConfig(properties);
 
             boolean initResult = controller.initialize();

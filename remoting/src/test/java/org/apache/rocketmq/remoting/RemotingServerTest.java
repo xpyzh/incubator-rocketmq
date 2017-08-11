@@ -41,6 +41,7 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
 
+//这个单元测试类可以参考下，包括这些注解
 public class RemotingServerTest {
     private static RemotingServer remotingServer;
     private static RemotingClient remotingClient;

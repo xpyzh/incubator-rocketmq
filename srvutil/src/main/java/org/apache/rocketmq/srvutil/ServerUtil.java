@@ -24,6 +24,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+//这个类使用来增加命令行参数的
 public class ServerUtil {
 
     public static Options buildCommandlineOptions(final Options options) {
@@ -40,6 +41,7 @@ public class ServerUtil {
         return options;
     }
 
+    //打印所有命令简介
     public static CommandLine parseCmdLine(final String appName, String[] args, Options options,
         CommandLineParser parser) {
         HelpFormatter hf = new HelpFormatter();
