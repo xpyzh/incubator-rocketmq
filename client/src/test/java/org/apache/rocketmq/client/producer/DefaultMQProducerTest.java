@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.rocketmq.client.ClientConfig;
 import org.apache.rocketmq.client.exception.MQBrokerException;
 import org.apache.rocketmq.client.exception.MQClientException;
@@ -39,6 +41,7 @@ import org.apache.rocketmq.common.protocol.route.BrokerData;
 import org.apache.rocketmq.common.protocol.route.QueueData;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.apache.rocketmq.remoting.exception.RemotingException;
+import org.apache.rocketmq.remoting.netty.NettyRemotingClient;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -149,13 +152,16 @@ public class DefaultMQProducerTest {
         final Throwable[] assertionErrors = new Throwable[1];
         final CountDownLatch countDownLatch = new CountDownLatch(2);
         producer.getDefaultMQProducerImpl().registerSendMessageHook(new SendMessageHook() {
-            @Override public String hookName() {
+            @Override
+            public String hookName() {
                 return "TestHook";
             }
 
-            @Override public void sendMessageBefore(final SendMessageContext context) {
+            @Override
+            public void sendMessageBefore(final SendMessageContext context) {
                 assertionErrors[0] = assertInOtherThread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         assertThat(context.getMessage()).isEqualTo(message);
                         assertThat(context.getProducer()).isEqualTo(producer);
                         assertThat(context.getCommunicationMode()).isEqualTo(CommunicationMode.SYNC);
@@ -165,9 +171,11 @@ public class DefaultMQProducerTest {
                 countDownLatch.countDown();
             }
 
-            @Override public void sendMessageAfter(final SendMessageContext context) {
+            @Override
+            public void sendMessageAfter(final SendMessageContext context) {
                 assertionErrors[0] = assertInOtherThread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         assertThat(context.getMessage()).isEqualTo(message);
                         assertThat(context.getProducer()).isEqualTo(producer.getDefaultMQProducerImpl());
                         assertThat(context.getCommunicationMode()).isEqualTo(CommunicationMode.SYNC);
@@ -188,6 +196,22 @@ public class DefaultMQProducerTest {
         if (assertionErrors[0] != null) {
             throw assertionErrors[0];
         }
+    }
+
+    @Test
+    public void testSetCallbackExecutor() throws MQClientException {
+        String producerGroupTemp = producerGroupPrefix + System.currentTimeMillis();
+        producer = new DefaultMQProducer(producerGroupTemp);
+        producer.setNamesrvAddr("127.0.0.1:9876");
+        producer.start();
+
+        ExecutorService customized = Executors.newCachedThreadPool();
+        producer.setCallbackExecutor(customized);
+
+        NettyRemotingClient remotingClient = (NettyRemotingClient) producer.getDefaultMQProducerImpl()
+            .getmQClientFactory().getMQClientAPIImpl().getRemotingClient();
+
+        assertThat(remotingClient.getCallbackExecutor()).isEqualTo(customized);
     }
 
     public static TopicRouteData createTopicRoute() {
@@ -229,7 +253,8 @@ public class DefaultMQProducerTest {
     private Throwable assertInOtherThread(final Runnable runnable) {
         final Throwable[] assertionErrors = new Throwable[1];
         Thread thread = new Thread(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 try {
                     runnable.run();
                 } catch (AssertionError e) {

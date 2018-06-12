@@ -17,21 +17,25 @@
 package org.apache.rocketmq.remoting.common;
 
 import io.netty.channel.Channel;
+import org.apache.rocketmq.remoting.exception.RemotingConnectException;
+import org.apache.rocketmq.remoting.exception.RemotingSendRequestException;
+import org.apache.rocketmq.remoting.exception.RemotingTimeoutException;
+import org.apache.rocketmq.remoting.protocol.RemotingCommand;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import org.apache.rocketmq.remoting.exception.RemotingConnectException;
-import org.apache.rocketmq.remoting.exception.RemotingSendRequestException;
-import org.apache.rocketmq.remoting.exception.RemotingTimeoutException;
-import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 
 public class RemotingHelper {
     public static final String ROCKETMQ_REMOTING = "RocketmqRemoting";
     public static final String DEFAULT_CHARSET = "UTF-8";
 
-    //异常转换为字符串描述
+    private static final Logger log = LoggerFactory.getLogger(ROCKETMQ_REMOTING);
+
     public static String exceptionSimpleDesc(final Throwable e) {
         StringBuffer sb = new StringBuffer();
         if (e != null) {
@@ -48,14 +52,12 @@ public class RemotingHelper {
         return sb.toString();
     }
 
-    //127.0.0.1:8080----->转化为InetSocketAddress类实例
     public static SocketAddress string2SocketAddress(final String addr) {
         String[] s = addr.split(":");
         InetSocketAddress isa = new InetSocketAddress(s[0], Integer.parseInt(s[1]));
         return isa;
     }
 
-    //建立一次blocking socket连接，发送命令，并接受一次返回命令，然后关闭socket
     public static RemotingCommand invokeSync(final String addr, final RemotingCommand request,
         final long timeoutMillis) throws InterruptedException, RemotingConnectException,
         RemotingSendRequestException, RemotingTimeoutException {
@@ -71,9 +73,9 @@ public class RemotingHelper {
 
                 //bugfix  http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4614802
                 socketChannel.socket().setSoTimeout((int) timeoutMillis);
-                //读写的具体编码看下面的encode方法，前4位是是存int，用来标志byte数据的总长度
+
                 ByteBuffer byteBufferRequest = request.encode();
-                while (byteBufferRequest.hasRemaining()) {//这边的逻辑是，写数据，如果没写成功则抛异常，如果写超时也抛异常
+                while (byteBufferRequest.hasRemaining()) {
                     int length = socketChannel.write(byteBufferRequest);
                     if (length > 0) {
                         if (byteBufferRequest.hasRemaining()) {
@@ -94,7 +96,7 @@ public class RemotingHelper {
                 ByteBuffer byteBufferSize = ByteBuffer.allocate(4);
                 while (byteBufferSize.hasRemaining()) {
                     int length = socketChannel.read(byteBufferSize);
-                    if (length > 0) {//这边同上面的写,读失败或者读超时抛异常
+                    if (length > 0) {
                         if (byteBufferSize.hasRemaining()) {
                             if ((System.currentTimeMillis() - beginTime) > timeoutMillis) {
 
@@ -129,7 +131,7 @@ public class RemotingHelper {
                 byteBufferBody.flip();
                 return RemotingCommand.decode(byteBufferBody);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("invokeSync failure", e);
 
                 if (sendRequestOK) {
                     throw new RemotingTimeoutException(addr, timeoutMillis);
@@ -167,17 +169,6 @@ public class RemotingHelper {
         return "";
     }
 
-    public static String parseChannelRemoteName(final Channel channel) {
-        if (null == channel) {
-            return "";
-        }
-        final InetSocketAddress remote = (InetSocketAddress) channel.remoteAddress();
-        if (remote != null) {
-            return remote.getAddress().getHostName();
-        }
-        return "";
-    }
-
     public static String parseSocketAddressAddr(SocketAddress socketAddress) {
         if (socketAddress != null) {
             final String addr = socketAddress.toString();
@@ -185,15 +176,6 @@ public class RemotingHelper {
             if (addr.length() > 0) {
                 return addr.substring(1);
             }
-        }
-        return "";
-    }
-
-    public static String parseSocketAddressName(SocketAddress socketAddress) {
-
-        final InetSocketAddress addrs = (InetSocketAddress) socketAddress;
-        if (addrs != null) {
-            return addrs.getAddress().getHostName();
         }
         return "";
     }

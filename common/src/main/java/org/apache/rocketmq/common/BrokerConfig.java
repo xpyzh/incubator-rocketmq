@@ -16,13 +16,19 @@
  */
 package org.apache.rocketmq.common;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import org.apache.rocketmq.common.annotation.ImportantField;
+import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.constant.PermName;
 import org.apache.rocketmq.remoting.common.RemotingUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class BrokerConfig {
+    private static final Logger log = LoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
+
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));
     @ImportantField
     private String namesrvAddr = System.getProperty(MixAll.NAMESRV_ADDR_PROPERTY, System.getenv(MixAll.NAMESRV_ADDR_ENV));
@@ -48,10 +54,13 @@ public class BrokerConfig {
     private String messageStorePlugIn = "";
 
     /**
-     * thread numbers for send message thread pool, since spin lock will be used by default since 4.0.x, the default value is 1.
+     * thread numbers for send message thread pool, since spin lock will be used by default since 4.0.x, the default
+     * value is 1.
      */
     private int sendMessageThreadPoolNums = 1; //16 + Runtime.getRuntime().availableProcessors() * 4;
     private int pullMessageThreadPoolNums = 16 + Runtime.getRuntime().availableProcessors() * 2;
+    private int queryMessageThreadPoolNums = 8 + Runtime.getRuntime().availableProcessors();
+
     private int adminBrokerThreadPoolNums = 16;
     private int clientManageThreadPoolNums = 32;
     private int consumerManageThreadPoolNums = 32;
@@ -66,6 +75,7 @@ public class BrokerConfig {
     private boolean fetchNamesrvAddrByAddressServer = false;
     private int sendThreadPoolQueueCapacity = 10000;
     private int pullThreadPoolQueueCapacity = 100000;
+    private int queryThreadPoolQueueCapacity = 20000;
     private int clientManagerThreadPoolQueueCapacity = 1000000;
     private int consumerManagerThreadPoolQueueCapacity = 1000000;
 
@@ -96,7 +106,9 @@ public class BrokerConfig {
     private boolean disableConsumeIfConsumerReadSlowly = false;
     private long consumerFallbehindThreshold = 1024L * 1024 * 1024 * 16;
 
+    private boolean brokerFastFailureEnable = true;
     private long waitTimeMillsInSendQueue = 200;
+    private long waitTimeMillsInPullQueue = 5 * 1000;
 
     private long startAcceptSendRequestTimeStamp = 0L;
 
@@ -120,16 +132,6 @@ public class BrokerConfig {
     // whether do filter when retry.
     private boolean filterSupportRetry = false;
     private boolean enablePropertyFilter = false;
-
-    public static String localHostName() {
-        try {
-            return InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
-
-        return "DEFAULT_BROKER";
-    }
 
     public boolean isTraceOn() {
         return traceOn;
@@ -163,6 +165,22 @@ public class BrokerConfig {
         this.consumerFallbehindThreshold = consumerFallbehindThreshold;
     }
 
+    public boolean isBrokerFastFailureEnable() {
+        return brokerFastFailureEnable;
+    }
+
+    public void setBrokerFastFailureEnable(final boolean brokerFastFailureEnable) {
+        this.brokerFastFailureEnable = brokerFastFailureEnable;
+    }
+
+    public long getWaitTimeMillsInPullQueue() {
+        return waitTimeMillsInPullQueue;
+    }
+
+    public void setWaitTimeMillsInPullQueue(final long waitTimeMillsInPullQueue) {
+        this.waitTimeMillsInPullQueue = waitTimeMillsInPullQueue;
+    }
+
     public boolean isDisableConsumeIfConsumerReadSlowly() {
         return disableConsumeIfConsumerReadSlowly;
     }
@@ -177,6 +195,16 @@ public class BrokerConfig {
 
     public void setSlaveReadEnable(final boolean slaveReadEnable) {
         this.slaveReadEnable = slaveReadEnable;
+    }
+
+    public static String localHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            log.error("Failed to obtain the host name", e);
+        }
+
+        return "DEFAULT_BROKER";
     }
 
     public int getRegisterBrokerTimeoutMills() {
@@ -299,6 +327,14 @@ public class BrokerConfig {
         this.pullMessageThreadPoolNums = pullMessageThreadPoolNums;
     }
 
+    public int getQueryMessageThreadPoolNums() {
+        return queryMessageThreadPoolNums;
+    }
+
+    public void setQueryMessageThreadPoolNums(final int queryMessageThreadPoolNums) {
+        this.queryMessageThreadPoolNums = queryMessageThreadPoolNums;
+    }
+
     public int getAdminBrokerThreadPoolNums() {
         return adminBrokerThreadPoolNums;
     }
@@ -385,6 +421,14 @@ public class BrokerConfig {
 
     public void setPullThreadPoolQueueCapacity(int pullThreadPoolQueueCapacity) {
         this.pullThreadPoolQueueCapacity = pullThreadPoolQueueCapacity;
+    }
+
+    public int getQueryThreadPoolQueueCapacity() {
+        return queryThreadPoolQueueCapacity;
+    }
+
+    public void setQueryThreadPoolQueueCapacity(final int queryThreadPoolQueueCapacity) {
+        this.queryThreadPoolQueueCapacity = queryThreadPoolQueueCapacity;
     }
 
     public boolean isBrokerTopicEnable() {

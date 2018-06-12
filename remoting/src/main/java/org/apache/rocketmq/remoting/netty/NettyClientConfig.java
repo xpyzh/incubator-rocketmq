@@ -55,6 +55,8 @@ public class NettyClientConfig {
     //客户端连接超时是否关闭该channel的开关
     private boolean clientCloseSocketIfTimeout = false;
 
+    private boolean useTLS;
+
     public boolean isClientCloseSocketIfTimeout() {
         return clientCloseSocketIfTimeout;
     }
@@ -141,5 +143,13 @@ public class NettyClientConfig {
 
     public void setClientPooledByteBufAllocatorEnable(boolean clientPooledByteBufAllocatorEnable) {
         this.clientPooledByteBufAllocatorEnable = clientPooledByteBufAllocatorEnable;
+    }
+
+    public boolean isUseTLS() {
+        return useTLS;
+    }
+
+    public void setUseTLS(boolean useTLS) {
+        this.useTLS = useTLS;
     }
 }

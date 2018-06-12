@@ -32,7 +32,6 @@ import org.apache.rocketmq.common.MixAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.common.namesrv.NamesrvConfig;
 import org.apache.rocketmq.remoting.netty.NettyServerConfig;
-import org.apache.rocketmq.remoting.netty.NettySystemConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.srvutil.ServerUtil;
 import org.apache.rocketmq.srvutil.ShutdownHookThread;
@@ -49,15 +48,6 @@ public class NamesrvStartup {
 
     public static NamesrvController main0(String[] args) {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
-
-        if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_SNDBUF_SIZE)) {
-            NettySystemConfig.socketSndbufSize = 4096;
-        }
-
-        if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_RCVBUF_SIZE)) {
-            NettySystemConfig.socketRcvbufSize = 4096;
-        }
-
         try {
             //PackageConflictDetect.detectFastjson();
             //增加命令行参数，这边是走main函数的args传入的，具体是在programAguments加参数，例如-h
@@ -104,7 +94,7 @@ public class NamesrvStartup {
             MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
 
             if (null == namesrvConfig.getRocketmqHome()) {
-                System.out.printf("Please set the " + MixAll.ROCKETMQ_HOME_ENV + " variable in your environment to match the location of the RocketMQ installation%n");
+                System.out.printf("Please set the %s variable in your environment to match the location of the RocketMQ installation%n", MixAll.ROCKETMQ_HOME_ENV);
                 System.exit(-2);
             }
             //logback日志启动，这个可以参考，直接代码里启动，不依赖第三方配置

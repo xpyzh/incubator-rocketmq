@@ -131,9 +131,9 @@ public class RouteInfoManager {
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
                 registerFirst = registerFirst || (null == oldAddr);
 
-                if (null != topicConfigWrapper //
+                if (null != topicConfigWrapper
                     && MixAll.MASTER_ID == brokerId) {
-                    if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())//
+                    if (this.isBrokerTopicConfigChanged(brokerAddr, topicConfigWrapper.getDataVersion())
                         || registerFirst) {
                         ConcurrentMap<String, TopicConfig> tcTable =
                             topicConfigWrapper.getTopicConfigTable();
@@ -152,7 +152,7 @@ public class RouteInfoManager {
                         channel,
                         haServerAddr));
                 if (null == prevBrokerLiveInfo) {
-                    log.info("new broker registerd, {} HAServer: {}", brokerAddr, haServerAddr);
+                    log.info("new broker registered, {} HAServer: {}", brokerAddr, haServerAddr);
                 }
 
                 if (filterServerList != null) {
@@ -205,7 +205,7 @@ public class RouteInfoManager {
             queueDataList = new LinkedList<QueueData>();
             queueDataList.add(queueData);
             this.topicQueueTable.put(topicConfig.getTopicName(), queueDataList);
-            log.info("new topic registerd, {} {}", topicConfig.getTopicName(), queueData);
+            log.info("new topic registered, {} {}", topicConfig.getTopicName(), queueData);
         } else {
             boolean addNewOne = true;
 
@@ -276,8 +276,8 @@ public class RouteInfoManager {
                 this.lock.writeLock().lockInterruptibly();
                 BrokerLiveInfo brokerLiveInfo = this.brokerLiveTable.remove(brokerAddr);
                 log.info("unregisterBroker, remove from brokerLiveTable {}, {}",
-                        brokerLiveInfo != null ? "OK" : "Failed",
-                        brokerAddr
+                    brokerLiveInfo != null ? "OK" : "Failed",
+                    brokerAddr
                 );
 
                 this.filterServerTable.remove(brokerAddr);
