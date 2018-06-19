@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.rocketmq.srvutil;
 
 import java.util.Properties;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -41,7 +43,7 @@ public class ServerUtil {
         return options;
     }
 
-    //打印所有命令简介
+    //结合args，解析参数，并打印所有参数的提示信息
     public static CommandLine parseCmdLine(final String appName, String[] args, Options options,
         CommandLineParser parser) {
         HelpFormatter hf = new HelpFormatter();
@@ -50,6 +52,7 @@ public class ServerUtil {
         try {
             commandLine = parser.parse(options, args);
             if (commandLine.hasOption('h')) {
+                //打印所有参数的提示信息
                 hf.printHelp(appName, options, true);
                 return null;
             }

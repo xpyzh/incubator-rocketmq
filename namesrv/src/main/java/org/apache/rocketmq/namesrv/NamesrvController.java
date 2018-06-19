@@ -77,9 +77,9 @@ public class NamesrvController {
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
-
         this.registerProcessor();
 
+        //定时扫描broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -88,6 +88,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        //定时打印KV信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override

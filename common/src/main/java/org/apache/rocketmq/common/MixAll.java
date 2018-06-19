@@ -314,6 +314,7 @@ public class MixAll {
         return properties;
     }
 
+    //读取properties,覆盖object内的属性
     public static void properties2Object(final Properties p, final Object object) {
         Method[] methods = object.getClass().getMethods();
         for (Method method : methods) {

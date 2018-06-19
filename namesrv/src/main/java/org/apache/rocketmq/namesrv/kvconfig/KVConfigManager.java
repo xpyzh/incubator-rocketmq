@@ -29,11 +29,12 @@ import org.apache.rocketmq.namesrv.NamesrvController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//暂时不知道存什么用
 public class KVConfigManager {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
     private final NamesrvController namesrvController;
-
+    //这里使用了可重入的读写锁
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final HashMap<String/* Namespace */, HashMap<String/* Key */, String/* Value */>> configTable =
         new HashMap<String, HashMap<String, String>>();
@@ -58,7 +59,7 @@ public class KVConfigManager {
             }
         }
     }
-    //更新路由
+
     public void putKVConfig(final String namespace, final String key, final String value) {
         try {
             this.lock.writeLock().lockInterruptibly();
@@ -87,7 +88,7 @@ public class KVConfigManager {
 
         this.persist();
     }
-    //持久化路由信息
+
     public void persist() {
         try {
             this.lock.readLock().lockInterruptibly();

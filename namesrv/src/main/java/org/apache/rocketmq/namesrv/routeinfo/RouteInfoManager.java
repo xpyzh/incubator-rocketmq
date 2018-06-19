@@ -45,13 +45,17 @@ import org.apache.rocketmq.remoting.common.RemotingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//路由信息存放
 public class RouteInfoManager {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;//2min
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
+    //集群+实例
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+    //集群
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+    //存活的broker
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
@@ -406,7 +410,7 @@ public class RouteInfoManager {
         return null;
     }
 
-
+    //扫描broker,两分钟内没有更新，则判断为失效
     public void scanNotActiveBroker() {
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {
@@ -421,8 +425,10 @@ public class RouteInfoManager {
         }
     }
 
+    //清除指定的broker信息
     public void onChannelDestroy(String remoteAddr, Channel channel) {
         String brokerAddrFound = null;
+        //根据channel,查找brokerLiveTable,获取broker的ip
         if (channel != null) {
             try {
                 try {
@@ -443,7 +449,7 @@ public class RouteInfoManager {
                 log.error("onChannelDestroy Exception", e);
             }
         }
-
+        //没有找到ip，则用remoteAddr代替
         if (null == brokerAddrFound) {
             brokerAddrFound = remoteAddr;
         } else {
@@ -451,20 +457,21 @@ public class RouteInfoManager {
         }
 
         if (brokerAddrFound != null && brokerAddrFound.length() > 0) {
-
             try {
                 try {
                     this.lock.writeLock().lockInterruptibly();
+                    //clear brokerLiveTable
                     this.brokerLiveTable.remove(brokerAddrFound);
+                    //clear filterServerTable
                     this.filterServerTable.remove(brokerAddrFound);
                     String brokerNameFound = null;
                     boolean removeBrokerName = false;
-                    //根据ip地址，移除brokerAddrTable中对应的BrokerData内的ip地址,并找到对应的brokerName
+                    //遍历broker集群
                     Iterator<Entry<String, BrokerData>> itBrokerAddrTable =
                         this.brokerAddrTable.entrySet().iterator();
+                    //遍历broker集群中每个实例
                     while (itBrokerAddrTable.hasNext() && (null == brokerNameFound)) {
                         BrokerData brokerData = itBrokerAddrTable.next().getValue();
-
                         Iterator<Entry<Long, String>> it = brokerData.getBrokerAddrs().entrySet().iterator();
                         while (it.hasNext()) {
                             Entry<Long, String> entry = it.next();
@@ -478,7 +485,7 @@ public class RouteInfoManager {
                                 break;
                             }
                         }
-                        //如果brokerData内的ip地址为空，则清楚这个BrokerData
+                        //如果集群内没有任何一个实例，则清除
                         if (brokerData.getBrokerAddrs().isEmpty()) {
                             removeBrokerName = true;
                             itBrokerAddrTable.remove();
@@ -486,7 +493,6 @@ public class RouteInfoManager {
                                 brokerData.getBrokerName());
                         }
                     }
-
                     if (brokerNameFound != null && removeBrokerName) {
                         //HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
                         Iterator<Entry<String, Set<String>>> it = this.clusterAddrTable.entrySet().iterator();
@@ -504,12 +510,10 @@ public class RouteInfoManager {
                                         clusterName);
                                     it.remove();
                                 }
-
                                 break;
                             }
                         }
                     }
-
                     if (removeBrokerName) {
                         //private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
                         Iterator<Entry<String, List<QueueData>>> itTopicQueueTable =
