@@ -58,6 +58,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Internal implementation. Most of the functions herein are delegated to it.
+     * DefaultMQPushConsumer的核心实现类
      */
     protected final transient DefaultMQPushConsumerImpl defaultMQPushConsumerImpl;
 
@@ -81,6 +82,8 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * </p>
      *
      * This field defaults to clustering.
+     * CLUSTERING: 同一个groupName的所有consumer实例，做负载均衡，消费同一份topic数据
+     * BROADCASTING: 同一个groupName的所有consumer实例，每个实例消费所有该topic的数据
      */
     private MessageModel messageModel = MessageModel.CLUSTERING;
 
@@ -127,21 +130,28 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Queue allocation algorithm specifying how message queues are allocated to each consumer clients.
+     * 负载均衡策略，默认使用:AllocateMessageQueueAveragely
      */
     private AllocateMessageQueueStrategy allocateMessageQueueStrategy;
 
     /**
      * Subscription relationship
+     * 订阅信息
      */
     private Map<String /* topic */, String /* sub expression */> subscription = new HashMap<String, String>();
 
     /**
      * Message listener
+     * 消息获取后的回调(业务逻辑处理)
      */
     private MessageListener messageListener;
 
     /**
      * Offset Storage
+     * 消息偏移量的管理类:
+     * 1.CLUSTERING模式下使用RemoteBrokerOffsetStore，offset由broker管理
+     * 2.BROADCASTING模式下使用LocalFileOffsetStore,offset有本地管理
+     *      默认路径:~/.rocketmq_offsets/xx/offsets.json
      */
     private OffsetStore offsetStore;
 
@@ -168,6 +178,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     /**
      * Flow control threshold on queue level, each message queue will cache at most 1000 messages by default,
      * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
+     * 单个queue的流量控制:数量默认1000
      */
     private int pullThresholdForQueue = 1000;
 
@@ -177,6 +188,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      *
      * <p>
      * The size of a message only measured by message body, so it's not accurate
+     * 单个queue的流量控制:总大小默认100mb
      */
     private int pullThresholdSizeForQueue = 100;
 
@@ -188,6 +200,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * <p>
      * For example, if the value of pullThresholdForTopic is 1000 and 10 message queues are assigned to this consumer,
      * then pullThresholdForQueue will be set to 100
+     * 整个topic下的流量控制：数量(默认不开)
      */
     private int pullThresholdForTopic = -1;
 
@@ -199,6 +212,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * <p>
      * For example, if the value of pullThresholdSizeForTopic is 1000 MiB and 10 message queues are
      * assigned to this consumer, then pullThresholdSizeForQueue will be set to 100 MiB
+     * 整个topic下的流量控制：总大小(默认不开)
      */
     private int pullThresholdSizeForTopic = -1;
 

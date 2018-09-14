@@ -72,6 +72,7 @@ public class NamesrvController {
 
         this.kvConfigManager.load();
 
+        //负责通信:监听一些端口，收到broker和client的请求，调用processor来处理
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
 
         this.remotingExecutor =
@@ -106,7 +107,7 @@ public class NamesrvController {
             this.remotingServer.registerDefaultProcessor(new ClusterTestRequestProcessor(this, namesrvConfig.getProductEnvName()),
                 this.remotingExecutor);
         } else {
-
+            //注册处理器,处理请求
             this.remotingServer.registerDefaultProcessor(new DefaultRequestProcessor(this), this.remotingExecutor);
         }
     }

@@ -555,19 +555,20 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 log.info("the consumer [{}] start beginning. messageModel={}, isUnitMode={}", this.defaultMQPushConsumer.getConsumerGroup(),
                     this.defaultMQPushConsumer.getMessageModel(), this.defaultMQPushConsumer.isUnitMode());
                 this.serviceState = ServiceState.START_FAILED;
-
+                //检查一下基本的参数设置
                 this.checkConfig();
-
+                //CLUSTERING模式订阅该consumer的重试topic
                 this.copySubscription();
-
+                //CLUSTERING模式下，如果是默认的instanceName那么改名为pid
                 if (this.defaultMQPushConsumer.getMessageModel() == MessageModel.CLUSTERING) {
                     this.defaultMQPushConsumer.changeInstanceNameToPID();
                 }
-
+                //获取impl的核心内部类:MQClientInstance，相同instanceName获取同一个实例(默认情况下生产消费都会复用一个实例)
                 this.mQClientFactory = MQClientManager.getInstance().getAndCreateMQClientInstance(this.defaultMQPushConsumer, this.rpcHook);
-
+                //初始化负载均衡参数
                 this.rebalanceImpl.setConsumerGroup(this.defaultMQPushConsumer.getConsumerGroup());
                 this.rebalanceImpl.setMessageModel(this.defaultMQPushConsumer.getMessageModel());
+                //默认算法为:AllocateMessageQueueAveragely
                 this.rebalanceImpl.setAllocateMessageQueueStrategy(this.defaultMQPushConsumer.getAllocateMessageQueueStrategy());
                 this.rebalanceImpl.setmQClientFactory(this.mQClientFactory);
 
@@ -804,9 +805,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 null);
         }
     }
-
+    //CLUSTERING模式订阅该consumer的重试topic
     private void copySubscription() throws MQClientException {
         try {
+            //正常情况无用
             Map<String, String> sub = this.defaultMQPushConsumer.getSubscription();
             if (sub != null) {
                 for (final Map.Entry<String, String> entry : sub.entrySet()) {
@@ -817,11 +819,11 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     this.rebalanceImpl.getSubscriptionInner().put(topic, subscriptionData);
                 }
             }
-
+            //正常情况无用
             if (null == this.messageListenerInner) {
                 this.messageListenerInner = this.defaultMQPushConsumer.getMessageListener();
             }
-
+            //如果是CLUSTERING模式订阅该consumer的重试topic，命名规则:'%RETRY%${ConumserGroupName}'
             switch (this.defaultMQPushConsumer.getMessageModel()) {
                 case BROADCASTING:
                     break;

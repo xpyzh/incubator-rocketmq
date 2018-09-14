@@ -144,7 +144,7 @@ public class RemotingCommand {
     public static RemotingCommand decode(final ByteBuffer byteBuffer) {
         int length = byteBuffer.limit();
         int oriHeaderLen = byteBuffer.getInt();
-        int headerLength = getHeaderLength(oriHeaderLen);//去除协议的8位，获取实际header长度的24位
+        int headerLength = getHeaderLength(oriHeaderLen);//去除协议的4位，获取实际header长度的24位
 
         byte[] headerData = new byte[headerLength];
         byteBuffer.get(headerData);

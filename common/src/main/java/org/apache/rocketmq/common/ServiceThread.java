@@ -103,6 +103,7 @@ public abstract class ServiceThread implements Runnable {
         }
     }
 
+    //通过countDown来进行等待
     protected void waitForRunning(long interval) {
         if (hasNotified.compareAndSet(true, false)) {
             this.onWaitEnd();

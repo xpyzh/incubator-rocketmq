@@ -68,7 +68,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         this.defaultMQPushConsumer = this.defaultMQPushConsumerImpl.getDefaultMQPushConsumer();
         this.consumerGroup = this.defaultMQPushConsumer.getConsumerGroup();
         this.consumeRequestQueue = new LinkedBlockingQueue<Runnable>();
-
+        //处理正常消息
         this.consumeExecutor = new ThreadPoolExecutor(
             this.defaultMQPushConsumer.getConsumeThreadMin(),
             this.defaultMQPushConsumer.getConsumeThreadMax(),
@@ -76,8 +76,9 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
             TimeUnit.MILLISECONDS,
             this.consumeRequestQueue,
             new ThreadFactoryImpl("ConsumeMessageThread_"));
-
+        //执行推迟消费的消息
         this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("ConsumeMessageScheduledThread_"));
+        //定期清理超时消息
         this.cleanExpireMsgExecutors = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("CleanExpireMsgScheduledThread_"));
     }
 
