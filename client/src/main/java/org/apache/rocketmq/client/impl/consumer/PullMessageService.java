@@ -24,12 +24,12 @@ import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.client.impl.factory.MQClientInstance;
 import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.ServiceThread;
+import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.utils.ThreadUtils;
-import org.slf4j.Logger;
 
 //负责拉去消费者订阅的message的线程
 public class PullMessageService extends ServiceThread {
-    private final Logger log = ClientLogger.getLog();
+    private final InternalLogger log = ClientLogger.getLog();
     private final LinkedBlockingQueue<PullRequest> pullRequestQueue = new LinkedBlockingQueue<PullRequest>();
     private final MQClientInstance mQClientFactory;
     private final ScheduledExecutorService scheduledExecutorService = Executors
@@ -45,13 +45,16 @@ public class PullMessageService extends ServiceThread {
     }
 
     public void executePullRequestLater(final PullRequest pullRequest, final long timeDelay) {
-        this.scheduledExecutorService.schedule(new Runnable() {
-
-            @Override
-            public void run() {
-                PullMessageService.this.executePullRequestImmediately(pullRequest);
-            }
-        }, timeDelay, TimeUnit.MILLISECONDS);
+        if (!isStopped()) {
+            this.scheduledExecutorService.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    PullMessageService.this.executePullRequestImmediately(pullRequest);
+                }
+            }, timeDelay, TimeUnit.MILLISECONDS);
+        } else {
+            log.warn("PullMessageServiceScheduledThread has shutdown");
+        }
     }
 
     public void executePullRequestImmediately(final PullRequest pullRequest) {
@@ -63,7 +66,11 @@ public class PullMessageService extends ServiceThread {
     }
 
     public void executeTaskLater(final Runnable r, final long timeDelay) {
-        this.scheduledExecutorService.schedule(r, timeDelay, TimeUnit.MILLISECONDS);
+        if (!isStopped()) {
+            this.scheduledExecutorService.schedule(r, timeDelay, TimeUnit.MILLISECONDS);
+        } else {
+            log.warn("PullMessageServiceScheduledThread has shutdown");
+        }
     }
 
     public ScheduledExecutorService getScheduledExecutorService() {
@@ -87,10 +94,8 @@ public class PullMessageService extends ServiceThread {
         while (!this.isStopped()) {
             try {
                 PullRequest pullRequest = this.pullRequestQueue.take();
-                if (pullRequest != null) {
-                    this.pullMessage(pullRequest);
-                }
-            } catch (InterruptedException e) {
+                this.pullMessage(pullRequest);
+            } catch (InterruptedException ignored) {
             } catch (Exception e) {
                 log.error("Pull Message Service Run Method exception", e);
             }

@@ -56,6 +56,7 @@ import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.apache.rocketmq.common.filter.FilterAPI;
 import org.apache.rocketmq.common.help.FAQUrl;
+import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageAccessor;
 import org.apache.rocketmq.common.message.MessageConst;
@@ -74,7 +75,6 @@ import org.apache.rocketmq.common.sysflag.PullSysFlag;
 import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.exception.RemotingException;
-import org.slf4j.Logger;
 
 public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     /**
@@ -91,7 +91,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     private static final long PULL_TIME_DELAY_MILLS_WHEN_SUSPEND = 1000;
     private static final long BROKER_SUSPEND_MAX_TIME_MILLIS = 1000 * 15;
     private static final long CONSUMER_TIMEOUT_MILLIS_WHEN_SUSPEND = 1000 * 30;
-    private final Logger log = ClientLogger.getLog();
+    private final InternalLogger log = ClientLogger.getLog();
     private final DefaultMQPushConsumer defaultMQPushConsumer;
     private final RebalanceImpl rebalanceImpl = new RebalancePushImpl(this);
     private final ArrayList<FilterMessageHook> filterMessageHookList = new ArrayList<FilterMessageHook>();
@@ -317,13 +317,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                                 DefaultMQPushConsumerImpl.this.getConsumerStatsManager().incPullTPS(pullRequest.getConsumerGroup(),
                                     pullRequest.getMessageQueue().getTopic(), pullResult.getMsgFoundList().size());
                                 //存放消息快照到processQueue
-                                boolean dispathToConsume = processQueue.putMessage(pullResult.getMsgFoundList());
+                                boolean dispatchToConsume = processQueue.putMessage(pullResult.getMsgFoundList());
                                 //处理消息
                                 DefaultMQPushConsumerImpl.this.consumeMessageService.submitConsumeRequest(
                                     pullResult.getMsgFoundList(),
                                     processQueue,
                                     pullRequest.getMessageQueue(),
-                                    dispathToConsume);
+                                    dispatchToConsume);
                                 //继续下一次pull(这里可以看出来一个messageQueue的pullRequest是一直在复用的)
                                 if (DefaultMQPushConsumerImpl.this.defaultMQPushConsumer.getPullInterval() > 0) {
                                     DefaultMQPushConsumerImpl.this.executePullRequestLater(pullRequest,
@@ -559,6 +559,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 break;
         }
     }
+
     //初始化
     public synchronized void start() throws MQClientException {
         switch (this.serviceState) {
@@ -822,6 +823,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 null);
         }
     }
+
     //CLUSTERING模式订阅该consumer的重试topic
     private void copySubscription() throws MQClientException {
         try {
