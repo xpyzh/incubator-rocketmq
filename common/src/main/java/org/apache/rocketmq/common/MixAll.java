@@ -181,6 +181,7 @@ public class MixAll {
         return file2String(file);
     }
 
+    //读取file内容，转化成String
     public static String file2String(final File file) throws IOException {
         if (file.exists()) {
             byte[] data = new byte[(int) file.length()];

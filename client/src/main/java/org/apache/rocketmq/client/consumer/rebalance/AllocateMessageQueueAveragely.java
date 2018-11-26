@@ -25,10 +25,17 @@ import org.slf4j.Logger;
 
 /**
  * Average Hashing queue algorithm
+ * DefaultMQPushConsumer的默认负载均衡算法
  */
 public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrategy {
     private final Logger log = ClientLogger.getLog();
 
+    /**
+     * @param currentCID：MQClientInstance的cid
+     * @param mqAll:所有队列
+     * @param cidAll:所有MQClientInstance实例
+     * @author youzhihao
+     */
     @Override
     public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
         List<String> cidAll) {

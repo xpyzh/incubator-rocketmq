@@ -21,6 +21,7 @@ import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.ServiceThread;
 import org.slf4j.Logger;
 
+//负责消费者的负载均衡的线程，默认20秒调用一次
 public class RebalanceService extends ServiceThread {
     private static long waitInterval =
         Long.parseLong(System.getProperty(

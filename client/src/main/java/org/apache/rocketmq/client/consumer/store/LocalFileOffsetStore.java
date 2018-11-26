@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 
 /**
  * Local storage implementation
+ * 客户端本地存储offset
  */
 public class LocalFileOffsetStore implements OffsetStore {
     public final static String LOCAL_OFFSET_STORE_DIR = System.getProperty(
@@ -58,6 +59,7 @@ public class LocalFileOffsetStore implements OffsetStore {
             "offsets.json";
     }
 
+    //读取本地offset
     @Override
     public void load() throws MQClientException {
         OffsetSerializeWrapper offsetSerializeWrapper = this.readLocalOffset();

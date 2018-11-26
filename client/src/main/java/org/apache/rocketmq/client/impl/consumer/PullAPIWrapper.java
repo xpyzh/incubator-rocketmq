@@ -67,16 +67,18 @@ public class PullAPIWrapper {
         this.unitMode = unitMode;
     }
 
+    //主要是做消息的decode，过滤操作
     public PullResult processPullResult(final MessageQueue mq, final PullResult pullResult,
         final SubscriptionData subscriptionData) {
         PullResultExt pullResultExt = (PullResultExt) pullResult;
-
+        //更新messageQueue的建议brokerId
         this.updatePullFromWhichNode(mq, pullResultExt.getSuggestWhichBrokerId());
         if (PullStatus.FOUND == pullResult.getPullStatus()) {
             ByteBuffer byteBuffer = ByteBuffer.wrap(pullResultExt.getMessageBinary());
             List<MessageExt> msgList = MessageDecoder.decodes(byteBuffer);
 
             List<MessageExt> msgListFilterAgain = msgList;
+            //如果有tag，则过滤出需要订阅的tag
             if (!subscriptionData.getTagsSet().isEmpty() && !subscriptionData.isClassFilterMode()) {
                 msgListFilterAgain = new ArrayList<MessageExt>(msgList.size());
                 for (MessageExt msg : msgList) {
@@ -87,14 +89,14 @@ public class PullAPIWrapper {
                     }
                 }
             }
-
+            //客户端的过滤hook
             if (this.hasHook()) {
                 FilterMessageContext filterMessageContext = new FilterMessageContext();
                 filterMessageContext.setUnitMode(unitMode);
                 filterMessageContext.setMsgList(msgListFilterAgain);
                 this.executeHook(filterMessageContext);
             }
-
+            //给每条消息设置offset
             for (MessageExt msg : msgListFilterAgain) {
                 MessageAccessor.putProperty(msg, MessageConst.PROPERTY_MIN_OFFSET,
                     Long.toString(pullResult.getMinOffset()));
@@ -104,7 +106,7 @@ public class PullAPIWrapper {
 
             pullResultExt.setMsgFoundList(msgListFilterAgain);
         }
-
+        //回收二进制内存
         pullResultExt.setMessageBinary(null);
 
         return pullResult;
@@ -149,6 +151,7 @@ public class PullAPIWrapper {
         final CommunicationMode communicationMode,
         final PullCallback pullCallback
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+        //获取broker信息
         FindBrokerResult findBrokerResult =
             this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
                 this.recalculatePullFromWhichNode(mq), false);
@@ -173,7 +176,7 @@ public class PullAPIWrapper {
             if (findBrokerResult.isSlave()) {
                 sysFlagInner = PullSysFlag.clearCommitOffsetFlag(sysFlagInner);
             }
-
+            //创建命令
             PullMessageRequestHeader requestHeader = new PullMessageRequestHeader();
             requestHeader.setConsumerGroup(this.consumerGroup);
             requestHeader.setTopic(mq.getTopic());
@@ -234,6 +237,7 @@ public class PullAPIWrapper {
     }
 
     public long recalculatePullFromWhichNode(final MessageQueue mq) {
+        //默认是false,只有在filtersrv服务中才会设置为true
         if (this.isConnectBrokerByUser()) {
             return this.defaultBrokerId;
         }
