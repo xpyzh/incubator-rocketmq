@@ -648,6 +648,8 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     }
 
     /**
+     * 设置一个ExecutorService，专门处理异步发送的回调
+     * 本质是NettyRemotingClient中专门处理response的线程池
      * Sets an Executor to be used for executing callback methods.
      * If the Executor is not set, {@link NettyRemotingClient#publicExecutor} will be used.
      *

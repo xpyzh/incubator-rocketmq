@@ -59,11 +59,13 @@ public abstract class NettyRemotingAbstract {
 
     /**
      * Semaphore to limit maximum number of on-going one-way requests, which protects system memory footprint.
+     * 默认65535
      */
     protected final Semaphore semaphoreOneway;
 
     /**
      * Semaphore to limit maximum number of on-going asynchronous requests, which protects system memory footprint.
+     * 默认65535
      */
     protected final Semaphore semaphoreAsync;
 
@@ -280,6 +282,8 @@ public abstract class NettyRemotingAbstract {
      */
     private void executeInvokeCallback(final ResponseFuture responseFuture) {
         boolean runInThisThread = false;
+        // 这里对于异步请求的callback方法，使用单独的线程池调用，在NettyRemotingClient中，默认会使用publicExecutor,
+        // 如果设置了callbackExecutor,则使用callbackExecutor
         ExecutorService executor = this.getCallbackExecutor();
         if (executor != null) {
             try {
@@ -287,6 +291,7 @@ public abstract class NettyRemotingAbstract {
                     @Override
                     public void run() {
                         try {
+                            //执行responseFuture内的InvokeCallback
                             responseFuture.executeInvokeCallback();
                         } catch (Throwable e) {
                             log.warn("execute callback in executor exception, and callback throw", e);
@@ -404,6 +409,7 @@ public abstract class NettyRemotingAbstract {
         final InvokeCallback invokeCallback)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {
         long beginStartTime = System.currentTimeMillis();
+        //每一个request对应一个apaqueId
         final int opaque = request.getOpaque();
         boolean acquired = this.semaphoreAsync.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS);
         if (acquired) {
@@ -412,17 +418,21 @@ public abstract class NettyRemotingAbstract {
             if (timeoutMillis < costTime) {
                 throw new RemotingTooMuchRequestException("invokeAsyncImpl call timeout");
             }
-
+            //封装一个future,这个是异步的关键
             final ResponseFuture responseFuture = new ResponseFuture(channel, opaque, timeoutMillis - costTime, invokeCallback, once);
+            //将futrue放入response缓存中
             this.responseTable.put(opaque, responseFuture);
             try {
+                //发送请求
                 channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
+                    //操作完成后的回调
                     @Override
                     public void operationComplete(ChannelFuture f) throws Exception {
                         if (f.isSuccess()) {
                             responseFuture.setSendRequestOK(true);
                             return;
                         }
+                        //如果发送失败，则移除ResponseFuture，并且调用callback
                         requestFail(opaque);
                         log.warn("send a request command to channel <{}> failed.", RemotingHelper.parseChannelRemoteAddr(channel));
                     }
@@ -448,12 +458,14 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    //处理发送请求失败的情形
     private void requestFail(final int opaque) {
         ResponseFuture responseFuture = responseTable.remove(opaque);
         if (responseFuture != null) {
             responseFuture.setSendRequestOK(false);
             responseFuture.putResponse(null);
             try {
+                //调用注册callback
                 executeInvokeCallback(responseFuture);
             } catch (Throwable e) {
                 log.warn("execute callback in requestFail, and callback throw", e);
@@ -487,6 +499,7 @@ public abstract class NettyRemotingAbstract {
         if (acquired) {
             final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(this.semaphoreOneway);
             try {
+                //发送请求
                 channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture f) throws Exception {

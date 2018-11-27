@@ -370,6 +370,18 @@ public class MQClientAPIImpl {
         return this.processSendResponse(brokerName, msg, response);
     }
 
+    /**
+     * 异步发送
+     * InvokeCallback中包含了重试逻辑+SendCallback回调的逻辑
+     * InvokeCallback实际是有remotingClient类的publicExecutor或者callbackExecutor调用的
+     * 接受到broker的如下response返回不重试:
+     *  1.ResponseCode.FLUSH_DISK_TIMEOUT
+     *  2.ResponseCode.FLUSH_SLAVE_TIMEOUT
+     *  3.ResponseCode.SLAVE_NOT_AVAILABLE
+     *  4.bResponseCode.SUCCESS
+     *
+     * @author youzhihao
+     */
     private void sendMessageAsync(
         final String addr,
         final String brokerName,
@@ -384,13 +396,17 @@ public class MQClientAPIImpl {
         final SendMessageContext context,
         final DefaultMQProducerImpl producer
     ) throws InterruptedException, RemotingException {
+        //注册一个InvokeCallback回调，最终这个回调是有remotingClient里面的publicExecutor或者callbackExecutor调用的
+        //这个InvokeCallback内部会有异步发送的重试逻辑和SendCallback的回调
         this.remotingClient.invokeAsync(addr, request, timeoutMillis, new InvokeCallback() {
             @Override
             public void operationComplete(ResponseFuture responseFuture) {
                 RemotingCommand response = responseFuture.getResponseCommand();
+                //如果没有sendCallback&&response不为空
                 if (null == sendCallback && response != null) {
 
                     try {
+                        //处理返回结果
                         SendResult sendResult = MQClientAPIImpl.this.processSendResponse(brokerName, msg, response);
                         if (context != null && sendResult != null) {
                             context.setSendResult(sendResult);
@@ -398,13 +414,14 @@ public class MQClientAPIImpl {
                         }
                     } catch (Throwable e) {
                     }
-
+                    //记录消息从发送到返回的延迟
                     producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), false);
                     return;
                 }
 
                 if (response != null) {
                     try {
+                        //处理返回结果
                         SendResult sendResult = MQClientAPIImpl.this.processSendResponse(brokerName, msg, response);
                         assert sendResult != null;
                         if (context != null) {
@@ -413,17 +430,19 @@ public class MQClientAPIImpl {
                         }
 
                         try {
+                            //执行sendCallback.onSuccess()
                             sendCallback.onSuccess(sendResult);
                         } catch (Throwable e) {
                         }
 
                         producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), false);
                     } catch (Exception e) {
+                        //异常重试,从这里可以看出retryTimesWhenSendFailed是异步的重试次数
                         producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), true);
                         onExceptionImpl(brokerName, msg, 0L, request, sendCallback, topicPublishInfo, instance,
                             retryTimesWhenSendFailed, times, e, context, false, producer);
                     }
-                } else {
+                } else {//response为空
                     producer.updateFaultItem(brokerName, System.currentTimeMillis() - responseFuture.getBeginTimestamp(), true);
                     if (!responseFuture.isSendRequestOK()) {
                         MQClientException ex = new MQClientException("send request failed", responseFuture.getCause());
@@ -444,6 +463,7 @@ public class MQClientAPIImpl {
         });
     }
 
+    //这里异步发送消息异常的处理
     private void onExceptionImpl(final String brokerName,
         final Message msg,
         final long timeoutMillis,
@@ -495,17 +515,19 @@ public class MQClientAPIImpl {
             }
 
             try {
+                //这里回调sendCallback的onException
                 sendCallback.onException(e);
             } catch (Exception ignored) {
             }
         }
     }
-
+    //处理请求信息,返回请求结果
     private SendResult processSendResponse(
         final String brokerName,
         final Message msg,
         final RemotingCommand response
     ) throws MQBrokerException, RemotingCommandException {
+        //todo:这段switch写的太牛逼了。。
         switch (response.getCode()) {
             case ResponseCode.FLUSH_DISK_TIMEOUT:
             case ResponseCode.FLUSH_SLAVE_TIMEOUT:
@@ -530,10 +552,10 @@ public class MQClientAPIImpl {
                         assert false;
                         break;
                 }
-
+                //解码请求返回头
                 SendMessageResponseHeader responseHeader =
                     (SendMessageResponseHeader) response.decodeCommandCustomHeader(SendMessageResponseHeader.class);
-
+                //获取请求返回的MessageQueue信息
                 MessageQueue messageQueue = new MessageQueue(msg.getTopic(), brokerName, responseHeader.getQueueId());
 
                 String uniqMsgId = MessageClientIDSetter.getUniqID(msg);

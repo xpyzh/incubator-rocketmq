@@ -504,7 +504,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
      * 1.SYNC: 同步发送，等待broker的返回,重试次数=1+retryTimesWhenSendFailed
      * 2.ASYNC: 异步发送，broker返回由回调处理,重试次数=
      * 3.ONEWAY: 异步发送，不等待返回
-     * 重试条件:如下异常会重试,SYNC和ONEWAY在这里,ASYNC重试在MQClientAPIImpl.sendMessageAsync
+     * SYNC重试条件:如下异常会重试,SYNC在这里,ASYNC重试在MQClientAPIImpl.sendMessageAsync,oneway不重试
      * 1.RemotingException
      * 2.MQClientException
      * 3.MQBrokerException
@@ -1069,6 +1069,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         return this.sendSelectImpl(msg, selector, arg, CommunicationMode.SYNC, null, timeout);
     }
 
+    /**
+     * 选择消息将要发送队列
+     * @author youzhihao
+     */
     private SendResult sendSelectImpl(
         Message msg,
         MessageQueueSelector selector,
