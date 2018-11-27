@@ -152,6 +152,7 @@ import org.apache.rocketmq.remoting.protocol.LanguageCode;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.remoting.protocol.RemotingSerializable;
 
+//和服务端通讯相关api的实现,核心底层类
 public class MQClientAPIImpl {
 
     private final static InternalLogger log = ClientLogger.getLog();
@@ -161,8 +162,9 @@ public class MQClientAPIImpl {
     static {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
     }
-
+    //NettyRemotingClient,实际的通讯核心类
     private final RemotingClient remotingClient;
+    //动态发现namesrv地址
     private final TopAddressing topAddressing;
     private final ClientRemotingProcessor clientRemotingProcessor;
     private String nameSrvAddr = null;
@@ -199,6 +201,7 @@ public class MQClientAPIImpl {
         return remotingClient;
     }
 
+    //发现namesrv服务
     public String fetchNameServerAddr() {
         try {
             String addrs = this.topAddressing.fetchNSAddr();

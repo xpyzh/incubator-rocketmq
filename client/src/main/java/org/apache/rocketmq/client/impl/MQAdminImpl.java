@@ -53,7 +53,7 @@ import org.apache.rocketmq.remoting.exception.RemotingCommandException;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.apache.rocketmq.remoting.netty.ResponseFuture;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
-
+//对broker相关操作的封装，底层还是调用MQClientAPIImpl
 public class MQAdminImpl {
 
     private final InternalLogger log = ClientLogger.getLog();

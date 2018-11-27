@@ -26,6 +26,7 @@ import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 public class TopicPublishInfo {
     private boolean orderTopic = false;
     private boolean haveTopicRouterInfo = false;
+    //brokerName维度下所有queue信息
     private List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>();
     private volatile ThreadLocalIndex sendWhichQueue = new ThreadLocalIndex();
     private TopicRouteData topicRouteData;
@@ -66,6 +67,9 @@ public class TopicPublishInfo {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
 
+    // producer发送消息的负载均衡,brokerName+queue维度
+    // 策略:轮询messageQueueList，在判断brokerName,使得每次的brokerName不一样
+    // todo: 这里可以做发送的fail-over,比如默认的slave不能接受消息，这里可以修改
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
         if (lastBrokerName == null) {
             return selectOneMessageQueue();

@@ -44,7 +44,13 @@ public class MQClientManager {
         return getAndCreateMQClientInstance(clientConfig, null);
     }
 
+    /**
+     * 获取MQClientInstance实例,核心的底层通信类，producer和consumer共用
+     * 根据clientId=ip+instanceName(instanceName=pid)的维度来获取，相同的clientId共享一个底层实例
+     * @author youzhihao
+     */
     public MQClientInstance getAndCreateMQClientInstance(final ClientConfig clientConfig, RPCHook rpcHook) {
+        //获取当前的clientId
         String clientId = clientConfig.buildMQClientId();
         MQClientInstance instance = this.factoryTable.get(clientId);
         if (null == instance) {

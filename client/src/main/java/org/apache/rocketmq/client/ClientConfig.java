@@ -43,14 +43,17 @@ public class ClientConfig {
      * Offset persistent interval for consumer
      */
     private int persistConsumerOffsetInterval = 1000 * 5;
+    //todo:这个变量是做什么用的？
     private boolean unitMode = false;
     private String unitName;
+    //默认开启,producer从vip通道发送消息 todo:做啥的?
     private boolean vipChannelEnabled = Boolean.parseBoolean(System.getProperty(SEND_MESSAGE_WITH_VIP_CHANNEL_PROPERTY, "true"));
-
+    //ssl开关,默认关闭
     private boolean useTLS = TlsSystemConfig.tlsEnable;
 
     private LanguageCode language = LanguageCode.JAVA;
 
+    //获取clientId，格式:ip@instanceName
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClientIP());
@@ -81,6 +84,7 @@ public class ClientConfig {
         this.instanceName = instanceName;
     }
 
+    //将instanceName设置为pid
     public void changeInstanceNameToPID() {
         if (this.instanceName.equals("DEFAULT")) {
             this.instanceName = String.valueOf(UtilAll.getPid());
@@ -102,6 +106,7 @@ public class ClientConfig {
         this.language = cc.language;
     }
 
+    //这个clone也比较有参考意义，不要用clone重载方法，直接new后重新赋值最合理
     public ClientConfig cloneClientConfig() {
         ClientConfig cc = new ClientConfig();
         cc.namesrvAddr = namesrvAddr;

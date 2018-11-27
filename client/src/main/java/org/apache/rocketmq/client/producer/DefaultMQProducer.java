@@ -58,6 +58,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Wrapping internal implementations for virtually all methods presented in this class.
+     * DefaultMQProducer实际的实现类
      */
     protected final transient DefaultMQProducerImpl defaultMQProducerImpl;
 
@@ -134,6 +135,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      */
     public DefaultMQProducer(final String producerGroup, RPCHook rpcHook) {
         this.producerGroup = producerGroup;
+        //初始化核心内部类DefaultMQProducerImpl
         defaultMQProducerImpl = new DefaultMQProducerImpl(this, rpcHook);
     }
 
