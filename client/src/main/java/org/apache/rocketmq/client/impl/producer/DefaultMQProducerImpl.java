@@ -504,7 +504,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
      * 1.SYNC: 同步发送，等待broker的返回,重试次数=1+retryTimesWhenSendFailed
      * 2.ASYNC: 异步发送，broker返回由回调处理,重试次数=
      * 3.ONEWAY: 异步发送，不等待返回
-     * 重试条件:如下异常会重试
+     * 重试条件:如下异常会重试,SYNC和ONEWAY在这里,ASYNC重试在MQClientAPIImpl.sendMessageAsync
      * 1.RemotingException
      * 2.MQClientException
      * 3.MQBrokerException
@@ -697,32 +697,35 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         final TopicPublishInfo topicPublishInfo,
         final long timeout) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         long beginStartTime = System.currentTimeMillis();
+        //根据brokerName,获取master的地址
         String brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(mq.getBrokerName());
+        //如果没有获取到ip，则查询namesrv，重新同步一次
         if (null == brokerAddr) {
             tryToFindTopicPublishInfo(mq.getTopic());
             brokerAddr = this.mQClientFactory.findBrokerAddressInPublish(mq.getBrokerName());
         }
-
         SendMessageContext context = null;
         if (brokerAddr != null) {
+            //如果开启vipChannel，发送走专门的端口
             brokerAddr = MixAll.brokerVIPChannel(this.defaultMQProducer.isSendMessageWithVIPChannel(), brokerAddr);
-
             byte[] prevBody = msg.getBody();
             try {
                 //for MessageBatch,ID has been set in the generating process
                 if (!(msg instanceof MessageBatch)) {
                     MessageClientIDSetter.setUniqID(msg);
                 }
-
                 int sysFlag = 0;
                 boolean msgBodyCompressed = false;
+                //尝试压缩message
                 if (this.tryToCompressMessage(msg)) {
+                    //增加压缩标记位
                     sysFlag |= MessageSysFlag.COMPRESSED_FLAG;
                     msgBodyCompressed = true;
                 }
 
                 final String tranMsg = msg.getProperty(MessageConst.PROPERTY_TRANSACTION_PREPARED);
                 if (tranMsg != null && Boolean.parseBoolean(tranMsg)) {
+                    //增加事务标记位
                     sysFlag |= MessageSysFlag.TRANSACTION_PREPARED_TYPE;
                 }
 
@@ -757,7 +760,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                     }
                     this.executeSendMessageHookBefore(context);
                 }
-
+                //封装请求头
                 SendMessageRequestHeader requestHeader = new SendMessageRequestHeader();
                 requestHeader.setProducerGroup(this.defaultMQProducer.getProducerGroup());
                 requestHeader.setTopic(msg.getTopic());
@@ -771,6 +774,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 requestHeader.setReconsumeTimes(0);
                 requestHeader.setUnitMode(this.isUnitMode());
                 requestHeader.setBatch(msg instanceof MessageBatch);
+                //todo:%RETRY%应该是重试队列?
                 if (requestHeader.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                     String reconsumeTimes = MessageAccessor.getReconsumeTime(msg);
                     if (reconsumeTimes != null) {
@@ -789,6 +793,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 switch (communicationMode) {
                     case ASYNC:
                         Message tmpMessage = msg;
+                        //这里做了个bug修复，当异步发送的时候。用户正常会在回调里进行一些重新发送的逻辑，而这个回调是先于这个finally块中的msg.setBody(prevBody);
+                        //因此这边需要在异步发送单独做个处理，先将msg复原
                         if (msgBodyCompressed) {
                             //If msg body was compressed, msgbody should be reset using prevBody.
                             //Clone new message using commpressed message body and recover origin massage.
@@ -796,6 +802,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                             tmpMessage = MessageAccessor.cloneMessage(msg);
                             msg.setBody(prevBody);
                         }
+                        //判断超时
                         long costTimeAsync = System.currentTimeMillis() - beginStartTime;
                         if (timeout < costTimeAsync) {
                             throw new RemotingTooMuchRequestException("sendKernelImpl call timeout");
@@ -871,6 +878,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         return mQClientFactory;
     }
 
+    //尝试压缩message，4k的单个message会进行压缩，批量的目前不支持压缩
     private boolean tryToCompressMessage(final Message msg) {
         if (msg instanceof MessageBatch) {
             //batch dose not support compressing right now
@@ -880,6 +888,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         if (body != null) {
             if (body.length >= this.defaultMQProducer.getCompressMsgBodyOverHowmuch()) {
                 try {
+                    //压缩算法，可以参考下
                     byte[] data = UtilAll.compress(body, zipCompressLevel);
                     if (data != null) {
                         msg.setBody(data);

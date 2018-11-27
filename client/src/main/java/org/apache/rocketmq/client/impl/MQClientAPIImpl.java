@@ -285,6 +285,8 @@ public class MQClientAPIImpl {
         throw new MQClientException(response.getCode(), response.getRemark());
     }
 
+
+    //同步发送
     public SendResult sendMessage(
         final String addr,
         final String brokerName,
@@ -298,6 +300,11 @@ public class MQClientAPIImpl {
         return sendMessage(addr, brokerName, msg, requestHeader, timeoutMillis, communicationMode, null, null, null, 0, context, producer);
     }
 
+    /**
+     * 同步调用(SYNC,ONEWAY:retryTimesWhenSendFailed=0,instance=null,topicPublishInfo=null,sendCallback=null,同步的重试是在DefaultMQProducerImpl.sendDefaultImpl
+     * 异步调用(ASYNC):重试是在MQClientAPIImpl.sendMessageAsync
+     * @author youzhihao
+     */
     public SendResult sendMessage(
         final String addr,
         final String brokerName,
@@ -314,6 +321,7 @@ public class MQClientAPIImpl {
     ) throws RemotingException, MQBrokerException, InterruptedException {
         long beginStartTime = System.currentTimeMillis();
         RemotingCommand request = null;
+        //默认会用SendMessageRequestHeaderV2
         if (sendSmartMsg || msg instanceof MessageBatch) {
             SendMessageRequestHeaderV2 requestHeaderV2 = SendMessageRequestHeaderV2.createSendMessageRequestHeaderV2(requestHeader);
             request = RemotingCommand.createRequestCommand(msg instanceof MessageBatch ? RequestCode.SEND_BATCH_MESSAGE : RequestCode.SEND_MESSAGE_V2, requestHeaderV2);

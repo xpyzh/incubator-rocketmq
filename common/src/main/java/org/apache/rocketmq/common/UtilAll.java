@@ -292,6 +292,7 @@ public class UtilAll {
         return result;
     }
 
+    //压缩二进制的方法，有参考意义
     public static byte[] compress(final byte[] src, final int level) throws IOException {
         byte[] result = src;
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(src.length);
