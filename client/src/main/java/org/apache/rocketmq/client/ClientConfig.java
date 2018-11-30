@@ -46,7 +46,7 @@ public class ClientConfig {
     //todo:这个变量是做什么用的？
     private boolean unitMode = false;
     private String unitName;
-    //默认开启,producer从vip通道发送消息 todo:做啥的?
+    //默认开启，vipChannel实际上就是将broker的默认端口-2，做为发送的专用端口
     private boolean vipChannelEnabled = Boolean.parseBoolean(System.getProperty(SEND_MESSAGE_WITH_VIP_CHANNEL_PROPERTY, "true"));
     //ssl开关,默认关闭
     private boolean useTLS = TlsSystemConfig.tlsEnable;

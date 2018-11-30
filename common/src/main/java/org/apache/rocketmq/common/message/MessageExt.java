@@ -64,10 +64,18 @@ public class MessageExt extends Message {
         return TopicFilterType.SINGLE_TAG;
     }
 
+    /**
+     * 将ip+port写入指定的ByteBuffer
+     * @author youzhihao
+     */
     public static ByteBuffer socketAddress2ByteBuffer(final SocketAddress socketAddress, final ByteBuffer byteBuffer) {
+        //ip地址的二进制表示形式就是4个字节,256,256,256,256
+        //总共4端，一个字节是8位,2的8次方，也就是256
         InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
         byteBuffer.put(inetSocketAddress.getAddress().getAddress(), 0, 4);
+        //port是int型，用4字节存储
         byteBuffer.putInt(inetSocketAddress.getPort());
+        //limit=currentPosition,position=0,remark=-1
         byteBuffer.flip();
         return byteBuffer;
     }
@@ -89,6 +97,10 @@ public class MessageExt extends Message {
         return socketAddress2ByteBuffer(this.storeHost);
     }
 
+    /**
+     * 将当前msg的host信息写入指定的ByteBuffer
+     * @author youzhihao
+     */
     public ByteBuffer getStoreHostBytes(ByteBuffer byteBuffer) {
         return socketAddress2ByteBuffer(this.storeHost, byteBuffer);
     }

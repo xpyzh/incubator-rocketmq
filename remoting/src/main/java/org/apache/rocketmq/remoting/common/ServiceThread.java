@@ -22,6 +22,7 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 
 /**
  * Base class for background thread
+ * 后台单线程的一个抽象，有参考意义
  */
 public abstract class ServiceThread implements Runnable {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);

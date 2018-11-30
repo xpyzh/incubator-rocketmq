@@ -27,6 +27,13 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.remoting.ChannelEventListener;
 
+/**
+ * ProducerManager,ConsumerManager,FilterServerManager都有对应channel的缓存
+ * 这个类的作用如下:
+ * 1.监听和处理所有channel的事件，将不正常的channel从这些缓存中移除
+ * 2.定时扫描这些缓存，将不正常的channel从这些缓存中移除
+ * @author youzhihao
+ */
 public class ClientHousekeepingService implements ChannelEventListener {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.BROKER_LOGGER_NAME);
     private final BrokerController brokerController;
@@ -39,7 +46,7 @@ public class ClientHousekeepingService implements ChannelEventListener {
     }
 
     public void start() {
-
+        //定时扫描这些缓存，将不正常的channel从这些缓存中移除，默认10秒一次
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {

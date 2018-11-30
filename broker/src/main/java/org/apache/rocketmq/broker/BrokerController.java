@@ -136,7 +136,9 @@ public class BrokerController {
     private final List<SendMessageHook> sendMessageHookList = new ArrayList<SendMessageHook>();
     private final List<ConsumeMessageHook> consumeMessageHookList = new ArrayList<ConsumeMessageHook>();
     private MessageStore messageStore;
+    //默认的nettyServer
     private RemotingServer remotingServer;
+    //vip通道，专门用于接收客户端的消息
     private RemotingServer fastRemotingServer;
     private TopicConfigManager topicConfigManager;
     private ExecutorService sendMessageExecutor;
@@ -163,6 +165,7 @@ public class BrokerController {
         final NettyClientConfig nettyClientConfig,
         final MessageStoreConfig messageStoreConfig
     ) {
+        //四大配置文件类
         this.brokerConfig = brokerConfig;
         this.nettyServerConfig = nettyServerConfig;
         this.nettyClientConfig = nettyClientConfig;
@@ -219,11 +222,15 @@ public class BrokerController {
         return queryThreadPoolQueue;
     }
 
+    //初始化
     public boolean initialize() throws CloneNotSupportedException {
+        //默认配置文件路径: ~/store/config/topics.json
         boolean result = this.topicConfigManager.load();
-
+        //默认配置文件路径: ~/store/config/consumerOffset.json
         result = result && this.consumerOffsetManager.load();
+        //默认配置文件路径: ~/store/config/subscriptionGroup.json
         result = result && this.subscriptionGroupManager.load();
+        //默认配置文件路径: ~/store/config/consumerFilter.json
         result = result && this.consumerFilterManager.load();
 
         if (result) {
@@ -245,10 +252,14 @@ public class BrokerController {
         result = result && this.messageStore.load();
 
         if (result) {
+            //第一个netty服务:默认的netty服务端
             this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.clientHousekeepingService);
+            //第二个netty服务:port-2做为端口号的服务端，专门用作客户端消息的接收
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
+            //定义一堆线程池，用于netty接收到不同的消息进行分发处理
+            //专门用于处理message消息的线程池
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getSendMessageThreadPoolNums(),
                 this.brokerConfig.getSendMessageThreadPoolNums(),
@@ -304,9 +315,9 @@ public class BrokerController {
             this.consumerManageExecutor =
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
-
+            //注册线程池到对应的请求命令上
             this.registerProcessor();
-
+            //定义一堆定时任务
             final long initialDelay = UtilAll.computNextMorningTimeMillis() - System.currentTimeMillis();
             final long period = 1000 * 60 * 60 * 24;
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -486,6 +497,7 @@ public class BrokerController {
         this.transactionalMessageCheckService = new TransactionalMessageCheckService(this);
     }
 
+    //注册处理器
     public void registerProcessor() {
         /**
          * SendMessageProcessor
@@ -493,9 +505,11 @@ public class BrokerController {
         SendMessageProcessor sendProcessor = new SendMessageProcessor(this);
         sendProcessor.registerSendMessageHook(sendMessageHookList);
         sendProcessor.registerConsumeMessageHook(consumeMessageHookList);
-
+        //兼容老版message发送
         this.remotingServer.registerProcessor(RequestCode.SEND_MESSAGE, sendProcessor, this.sendMessageExecutor);
+        //新版本message发送,
         this.remotingServer.registerProcessor(RequestCode.SEND_MESSAGE_V2, sendProcessor, this.sendMessageExecutor);
+        //处理批量发送,MessageBatch
         this.remotingServer.registerProcessor(RequestCode.SEND_BATCH_MESSAGE, sendProcessor, this.sendMessageExecutor);
         this.remotingServer.registerProcessor(RequestCode.CONSUMER_SEND_MSG_BACK, sendProcessor, this.sendMessageExecutor);
         this.fastRemotingServer.registerProcessor(RequestCode.SEND_MESSAGE, sendProcessor, this.sendMessageExecutor);

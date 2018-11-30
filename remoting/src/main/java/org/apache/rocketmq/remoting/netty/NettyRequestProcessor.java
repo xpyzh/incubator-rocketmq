@@ -23,6 +23,10 @@ import org.apache.rocketmq.remoting.protocol.RemotingCommand;
  * Common remoting command processor
  */
 public interface NettyRequestProcessor {
+    /**
+     * 线程模型:processRequest的调用实际是由brokerController中注册的处理器和对应的线程池去调用
+     * @author youzhihao
+     */
     RemotingCommand processRequest(ChannelHandlerContext ctx, RemotingCommand request)
         throws Exception;
 

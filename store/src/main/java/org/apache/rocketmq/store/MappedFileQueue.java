@@ -29,6 +29,7 @@ import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 
+//MappedFile队列的维护
 public class MappedFileQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
@@ -36,7 +37,7 @@ public class MappedFileQueue {
     private static final int DELETE_FILES_BATCH_MAX = 10;
 
     private final String storePath;
-
+    //commitLog文件默认大小1G
     private final int mappedFileSize;
 
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
@@ -191,24 +192,31 @@ public class MappedFileQueue {
         return 0;
     }
 
+    /**
+     * 获取mapperFile
+     * @author youzhihao
+     */
     public MappedFile getLastMappedFile(final long startOffset, boolean needCreate) {
         long createOffset = -1;
+        //尝试获取最后一个MappedFile
         MappedFile mappedFileLast = getLastMappedFile();
-
+        //mappedFileLast未创建，则createOffset取mappedFileSize对于startOffset的最小整数倍数值
+        //例如startOffset=401,mappedFileSize=200,createOffset=400开始
         if (mappedFileLast == null) {
             createOffset = startOffset - (startOffset % this.mappedFileSize);
         }
-
+        //mappedFileLast已经创建&&满了,则在最后一个MappedFile后在创建一个,createOffset=当前文件的位移开头+mappedFileSize
         if (mappedFileLast != null && mappedFileLast.isFull()) {
             createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;
         }
-
+        //创建新的MappedFile
         if (createOffset != -1 && needCreate) {
+            //计算出next和next的next文件路径
             String nextFilePath = this.storePath + File.separator + UtilAll.offset2FileName(createOffset);
             String nextNextFilePath = this.storePath + File.separator
                 + UtilAll.offset2FileName(createOffset + this.mappedFileSize);
             MappedFile mappedFile = null;
-
+            //默认allocateMappedFileService!=null,因此会用allocateMappedFileService创建新的mappedFile
             if (this.allocateMappedFileService != null) {
                 mappedFile = this.allocateMappedFileService.putRequestAndReturnMappedFile(nextFilePath,
                     nextNextFilePath, this.mappedFileSize);

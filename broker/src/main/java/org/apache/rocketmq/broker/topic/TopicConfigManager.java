@@ -142,6 +142,13 @@ public class TopicConfigManager extends ConfigManager {
         return this.topicConfigTable.get(topic);
     }
 
+    /**
+     * 根据指定的模板topic，尝试自动创建topic，默认模板topic:TBW102
+     * 要自己设置模板，模板topic的权限必须是7,及rwx都有，光有x没用,broker会校验x权限，客户端会校验wr权限
+     * 不建议自己在搞一个模板，因为从源码的角度看，控制客户端自动创建，是基于defaultTopic=TBW102基础上的，如果不是TBW102，则isAutoCreateTopicEnable无效
+     * @param defaultTopic 指定的模板topic
+     * @author youzhihao
+     */
     public TopicConfig createTopicInSendMessageMethod(final String topic, final String defaultTopic,
         final String remoteAddress, final int clientDefaultTopicQueueNums, final int topicSysFlag) {
         TopicConfig topicConfig = null;
@@ -153,18 +160,19 @@ public class TopicConfigManager extends ConfigManager {
                     topicConfig = this.topicConfigTable.get(topic);
                     if (topicConfig != null)
                         return topicConfig;
-
+                    //获取模板topic配置
                     TopicConfig defaultTopicConfig = this.topicConfigTable.get(defaultTopic);
+                    //尝试使用模板topic来创建新的topic
                     if (defaultTopicConfig != null) {
                         if (defaultTopic.equals(MixAll.AUTO_CREATE_TOPIC_KEY_TOPIC)) {
                             if (!this.brokerController.getBrokerConfig().isAutoCreateTopicEnable()) {
                                 defaultTopicConfig.setPerm(PermName.PERM_READ | PermName.PERM_WRITE);
                             }
                         }
-
+                        //判断模板topic是否有x权限
                         if (PermName.isInherited(defaultTopicConfig.getPerm())) {
                             topicConfig = new TopicConfig(topic);
-
+                            //queueNum最大值为defaultTopicConfig设置的queueNum
                             int queueNums =
                                 clientDefaultTopicQueueNums > defaultTopicConfig.getWriteQueueNums() ? defaultTopicConfig
                                     .getWriteQueueNums() : clientDefaultTopicQueueNums;

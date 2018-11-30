@@ -78,17 +78,20 @@ public abstract class NettyRemotingAbstract {
     /**
      * This container holds all processors per request code, aka, for each incoming request, we may look up the
      * responding processor in this map to handle the request.
+     * 请求code,处理器，线程池的缓存
      */
     protected final HashMap<Integer/* request code */, Pair<NettyRequestProcessor, ExecutorService>> processorTable =
         new HashMap<Integer, Pair<NettyRequestProcessor, ExecutorService>>(64);
 
     /**
      * Executor to feed netty events to user defined {@link ChannelEventListener}.
+     * 单独线程，专门处理channel的各种事件的，内部是调用注册的ChannelEventListener
      */
     protected final NettyEventExecutor nettyEventExecutor = new NettyEventExecutor();
 
     /**
      * The default request processor to use in case there is no exact match in {@link #processorTable} per request code.
+     * NettyRemotingServer默认注册AdminBrokerProcessor
      */
     protected Pair<NettyRequestProcessor, ExecutorService> defaultRequestProcessor;
 
@@ -148,10 +151,10 @@ public abstract class NettyRemotingAbstract {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
-                case REQUEST_COMMAND:
+                case REQUEST_COMMAND://客户端请求的处理
                     processRequestCommand(ctx, cmd);
                     break;
-                case RESPONSE_COMMAND:
+                case RESPONSE_COMMAND://服务端发送请求后，接收和处理客户端的返回
                     processResponseCommand(ctx, cmd);
                     break;
                 default:
@@ -162,16 +165,21 @@ public abstract class NettyRemotingAbstract {
 
     /**
      * Process incoming request command issued by remote peer.
+     * request请求的分发入口
+     * 根据RemotingCommand，交给注册过的的指定的处理器和线程池处理
+     * 注册过程BrokerController.registerProcessor
      *
      * @param ctx channel handler context.
      * @param cmd request command.
      */
     public void processRequestCommand(final ChannelHandlerContext ctx, final RemotingCommand cmd) {
         final Pair<NettyRequestProcessor, ExecutorService> matched = this.processorTable.get(cmd.getCode());
+        //如果没有匹配到，则用默认处理器,NettyRemotingServer默认注册AdminBrokerProcessor
         final Pair<NettyRequestProcessor, ExecutorService> pair = null == matched ? this.defaultRequestProcessor : matched;
         final int opaque = cmd.getOpaque();
 
         if (pair != null) {
+            //创建一个Runnable
             Runnable run = new Runnable() {
                 @Override
                 public void run() {
@@ -180,12 +188,12 @@ public abstract class NettyRemotingAbstract {
                         if (rpcHook != null) {
                             rpcHook.doBeforeRequest(RemotingHelper.parseChannelRemoteAddr(ctx.channel()), cmd);
                         }
-
+                        //处理器处理请求
                         final RemotingCommand response = pair.getObject1().processRequest(ctx, cmd);
                         if (rpcHook != null) {
                             rpcHook.doAfterResponse(RemotingHelper.parseChannelRemoteAddr(ctx.channel()), cmd, response);
                         }
-
+                        //oneway请求不需要返回,sync和async需要返回给客户端
                         if (!cmd.isOnewayRPC()) {
                             if (response != null) {
                                 response.setOpaque(opaque);
@@ -214,7 +222,7 @@ public abstract class NettyRemotingAbstract {
                     }
                 }
             };
-
+            //处理器可能拒绝请求
             if (pair.getObject1().rejectRequest()) {
                 final RemotingCommand response = RemotingCommand.createResponseCommand(RemotingSysResponseCode.SYSTEM_BUSY,
                     "[REJECTREQUEST]system busy, start flow control for a while");
@@ -224,7 +232,9 @@ public abstract class NettyRemotingAbstract {
             }
 
             try {
+                //封装消息处理逻辑到RequestTask
                 final RequestTask requestTask = new RequestTask(run, ctx.channel(), cmd);
+                //指定线程池执行该任务
                 pair.getObject2().submit(requestTask);
             } catch (RejectedExecutionException e) {
                 if ((System.currentTimeMillis() % 10000) == 0) {
@@ -388,7 +398,7 @@ public abstract class NettyRemotingAbstract {
                     log.warn("send a request command to channel <" + addr + "> failed.");
                 }
             });
-
+            //发送完成后等待response，达到sync的效果
             RemotingCommand responseCommand = responseFuture.waitResponse(timeoutMillis);
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
@@ -529,7 +539,7 @@ public abstract class NettyRemotingAbstract {
             }
         }
     }
-
+    //单独线程,专门处理channel的各种连接事件，内部调用ChannelEventListener处理
     class NettyEventExecutor extends ServiceThread {
         private final LinkedBlockingQueue<NettyEvent> eventQueue = new LinkedBlockingQueue<NettyEvent>();
         private final int maxSize = 10000;

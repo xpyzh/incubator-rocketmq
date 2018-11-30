@@ -26,7 +26,8 @@ public interface AppendMessageCallback {
 
     /**
      * After message serialization, write MapedByteBuffer
-     *
+     * @param fileFromOffset 文件开始的offset
+     * @param maxBlank 当前最大剩余
      * @return How many bytes to write
      */
     AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer,

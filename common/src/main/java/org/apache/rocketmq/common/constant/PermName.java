@@ -16,10 +16,14 @@
  */
 package org.apache.rocketmq.common.constant;
 
+//topic的权限，参照linux的权限系统，具有参考意义
 public class PermName {
     public static final int PERM_PRIORITY = 0x1 << 3;
+    //读权限
     public static final int PERM_READ = 0x1 << 2;
+    //写权限
     public static final int PERM_WRITE = 0x1 << 1;
+    //充当模板的权限
     public static final int PERM_INHERIT = 0x1 << 0;
 
     public static String perm2String(final int perm) {
@@ -47,6 +51,7 @@ public class PermName {
         return (perm & PERM_WRITE) == PERM_WRITE;
     }
 
+    //判断是否有X权限，在这里x权限及是作为topic模板的能力
     public static boolean isInherited(final int perm) {
         return (perm & PERM_INHERIT) == PERM_INHERIT;
     }

@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.rocketmq.remoting.netty.TlsSystemConfig.TLS_ENABLE;
 
+//broker的启动类
 public class BrokerStartup {
     public static Properties properties = null;
     public static CommandLine commandLine = null;
@@ -87,6 +88,12 @@ public class BrokerStartup {
         }
     }
 
+    /**
+     * 主要是解析命令行参数，然后创建BrokerController实例，并调用BrokerController.initialize进行初始化
+     * 解析命令行参数和读取配置文件有参考意义
+     * 四个配置文件类:BrokerConfig,NettyServerConfig,NettyClientConfig,MessageStoreConfig
+     * @author youzhihao
+     */
     public static BrokerController createBrokerController(String[] args) {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
 
@@ -120,7 +127,7 @@ public class BrokerStartup {
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
                 messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
             }
-
+            //这段是读取-c后的配置文件
             if (commandLine.hasOption('c')) {
                 String file = commandLine.getOptionValue('c');
                 if (file != null) {
@@ -206,7 +213,7 @@ public class BrokerStartup {
             MixAll.printObjectProperties(log, nettyServerConfig);
             MixAll.printObjectProperties(log, nettyClientConfig);
             MixAll.printObjectProperties(log, messageStoreConfig);
-
+            //创建BrokerController实例
             final BrokerController controller = new BrokerController(
                 brokerConfig,
                 nettyServerConfig,
@@ -214,7 +221,7 @@ public class BrokerStartup {
                 messageStoreConfig);
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
-
+            //BrokerController实例初始化
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();

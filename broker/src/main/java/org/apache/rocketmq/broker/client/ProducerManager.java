@@ -41,9 +41,11 @@ public class ProducerManager {
     private static final long CHANNEL_EXPIRED_TIMEOUT = 1000 * 120;
     private static final int GET_AVALIABLE_CHANNEL_RETRY_COUNT = 3;
     private final Lock groupChannelLock = new ReentrantLock();
+    //维护producer的groupName,channel的映射,groupName:channel=1:N
     private final HashMap<String /* group name */, HashMap<Channel, ClientChannelInfo>> groupChannelTable =
         new HashMap<String, HashMap<Channel, ClientChannelInfo>>();
     private PositiveAtomicCounter positiveAtomicCounter = new PositiveAtomicCounter();
+
     public ProducerManager() {
     }
 
@@ -108,10 +110,8 @@ public class ProducerManager {
                         for (final Map.Entry<String, HashMap<Channel, ClientChannelInfo>> entry : this.groupChannelTable
                             .entrySet()) {
                             final String group = entry.getKey();
-                            final HashMap<Channel, ClientChannelInfo> clientChannelInfoTable =
-                                entry.getValue();
-                            final ClientChannelInfo clientChannelInfo =
-                                clientChannelInfoTable.remove(channel);
+                            final HashMap<Channel, ClientChannelInfo> clientChannelInfoTable = entry.getValue();
+                            final ClientChannelInfo clientChannelInfo = clientChannelInfoTable.remove(channel);
                             if (clientChannelInfo != null) {
                                 log.info(
                                     "NETTY EVENT: remove channel[{}][{}] from ProducerManager groupChannelTable, producer group: {}",

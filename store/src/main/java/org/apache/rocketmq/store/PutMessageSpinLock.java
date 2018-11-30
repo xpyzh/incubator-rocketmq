@@ -20,6 +20,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Spin lock Implementation to put message, suggest using this with low race conditions
+ * 自旋锁,适合竞争比较少的情况
+ * 实质是轮询，耗cpu资源
+ * 原因:如果频繁的竞争，自旋更加耗cpu资源，不如让线程wait
  */
 public class PutMessageSpinLock implements PutMessageLock {
     //true: Can lock, false : in lock.
