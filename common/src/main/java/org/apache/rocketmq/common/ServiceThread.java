@@ -28,7 +28,9 @@ public abstract class ServiceThread implements Runnable {
     private static final long JOIN_TIME = 90 * 1000;
 
     protected final Thread thread;
+    //利用自定义的，可以复原的CountDownLatch来实现等待逻辑
     protected final CountDownLatch2 waitPoint = new CountDownLatch2(1);
+    //利用hasNotified，来解决并发调用CountDownLatch2.countDown()的情形
     protected volatile AtomicBoolean hasNotified = new AtomicBoolean(false);
     protected volatile boolean stopped = false;
 
@@ -105,6 +107,10 @@ public abstract class ServiceThread implements Runnable {
 
     //通过countDown来进行等待
     protected void waitForRunning(long interval) {
+        //这里的hasNotified的目的是，处理wakeup和waitForRunning线程的并发问题，以及解决waitPoint.countDown()并发调用的问题
+        //只要当wakeup调用，必定可以得到一次快速唤醒的响应,如果没有compareAndSet，考虑如下时间线
+        // thread2: wakeup();
+        // thread1: waitForRunning执行到waitPoint.reset(); 实际wakeup没有起到作用
         if (hasNotified.compareAndSet(true, false)) {
             this.onWaitEnd();
             return;
@@ -123,6 +129,7 @@ public abstract class ServiceThread implements Runnable {
         }
     }
 
+    //线程唤醒后的回调
     protected void onWaitEnd() {
     }
 

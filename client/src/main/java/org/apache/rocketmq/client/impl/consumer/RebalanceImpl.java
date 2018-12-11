@@ -42,11 +42,13 @@ import org.apache.rocketmq.common.protocol.heartbeat.SubscriptionData;
 
 /**
  * Base class for rebalance algorithm
+ * consumer负载均衡的实现
  */
 public abstract class RebalanceImpl {
     protected static final InternalLogger log = ClientLogger.getLog();
+    //维护负载均衡后，该消费者需要消费的队列信息
     protected final ConcurrentMap<MessageQueue, ProcessQueue> processQueueTable = new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
-    //topic下的queue信息
+    //topic下的queue信息,这里的订阅信息是由定时任务调用MQClientInstance.this.updateTopicRouteInfoFromNameServer()获取
     protected final ConcurrentMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable =
         new ConcurrentHashMap<String, Set<MessageQueue>>();
     //topic下的订阅信息
@@ -219,7 +221,7 @@ public abstract class RebalanceImpl {
     }
     //消费者做负载均衡的核心方法
     public void doRebalance(final boolean isOrder) {
-        //获取所有订阅信息
+        //获取该consumerGroup下所有订阅信息
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
@@ -243,7 +245,7 @@ public abstract class RebalanceImpl {
 
     private void rebalanceByTopic(final String topic, final boolean isOrder) {
         switch (messageModel) {
-            case BROADCASTING: {
+            case BROADCASTING: {//订阅模式下，consumer消费topic下全部队列
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 if (mqSet != null) {
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, mqSet, isOrder);
@@ -260,10 +262,10 @@ public abstract class RebalanceImpl {
                 }
                 break;
             }
-            case CLUSTERING: {
-                //获取topic的queue信息
+            case CLUSTERING: {//集群模式下，consumer消费topic下的部分队列
+                //获取topic下所有master的queue信息
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
-                //从broker获取所有正在订阅该topic的consumer的CID列表
+                //获取topic下所有master的cid信息
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
                 if (null == mqSet) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
@@ -376,13 +378,13 @@ public abstract class RebalanceImpl {
         //如果负载均衡后的queue是新的，则加入
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
         for (MessageQueue mq : mqSet) {
-            //顺序消费则向服务器获取锁
             if (!this.processQueueTable.containsKey(mq)) {
+                //顺序消费则向服务器获取锁
                 if (isOrder && !this.lock(mq)) {
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     continue;
                 }
-
+                //删除旧的的offset信息
                 this.removeDirtyOffset(mq);
                 ProcessQueue pq = new ProcessQueue();
                 //计算消费者的offset
@@ -407,7 +409,7 @@ public abstract class RebalanceImpl {
                 }
             }
         }
-        //推送pull请求
+        //推送一次pull请求
         this.dispatchPullRequest(pullRequestList);
 
         return changed;

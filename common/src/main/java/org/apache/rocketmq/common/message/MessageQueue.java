@@ -17,7 +17,7 @@
 package org.apache.rocketmq.common.message;
 
 import java.io.Serializable;
-
+// 这里了实现hashCode,equals，compareTo方法，为了能在各种集合中当做key进行操作
 public class MessageQueue implements Comparable<MessageQueue>, Serializable {
     private static final long serialVersionUID = 6191200464116433425L;
     private String topic;

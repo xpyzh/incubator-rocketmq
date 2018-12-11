@@ -117,9 +117,9 @@ public class MQClientInstance {
         }
     });
     private final ClientRemotingProcessor clientRemotingProcessor;
-    //消费者拉去消息的核心类
+    //单独做message拉去的线程
     private final PullMessageService pullMessageService;
-    //负责消费者的负载均衡
+    //单独做负载均衡的线程
     private final RebalanceService rebalanceService;
     private final DefaultMQProducer defaultMQProducer;
     //消费者统计信息的管理
@@ -251,7 +251,7 @@ public class MQClientInstance {
                     // 相关定时任务启动
                     this.startScheduledTask();
                     // Start pull service
-                    // 消费者拉去消息的核心服务启动
+                    // 消费者拉去消息的核心服务线程启动
                     this.pullMessageService.start();
                     // 启动一个专门做消费者rebalance的线程,默认20秒触发一次
                     this.rebalanceService.start();
@@ -288,7 +288,7 @@ public class MQClientInstance {
             }, 1000 * 10, 1000 * 60 * 2, TimeUnit.MILLISECONDS);
         }
         // 从namesrv服务器更新该MQClientInstance实例注册的producer和consumer的的路由信息,30秒一次
-        // 更新如下缓存:topicRouteTable,brokerAddrTable,producerTable,consumerTable
+        // 更新如下缓存:topicRouteTable,brokerAddrTable,producerTable,consumerTable,还有rebalance下的topicSubscribeInfoTable
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -615,16 +615,21 @@ public class MQClientInstance {
         }
     }
 
-    //更新指定的topic相关的信息
-    //更新如下缓存:topicRouteTable,brokerAddrTable,producerTable,consumerTable
+
+    /**
+     *
+     * 更新指定的topic相关的信息
+     * 更新如下缓存:topicRouteTable,brokerAddrTable,producerTable,consumerTable
+     * @param isDefault true则查询模板topic的路由信息
+     * @author youzhihao
+     */
     public boolean updateTopicRouteInfoFromNameServer(final String topic, boolean isDefault,
         DefaultMQProducer defaultMQProducer) {
         try {
             if (this.lockNamesrv.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
-                //查询topic的路由信息
                 try {
                     TopicRouteData topicRouteData;
-                    if (isDefault && defaultMQProducer != null) {
+                    if (isDefault && defaultMQProducer != null) {//这里是查询模板topic的路由信息
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             1000 * 3);
                         if (topicRouteData != null) {
@@ -982,16 +987,18 @@ public class MQClientInstance {
         this.adminExtTable.remove(group);
     }
 
+    //唤醒rebalanceService，理解做负载均衡
     public void rebalanceImmediately() {
         this.rebalanceService.wakeup();
     }
 
-    //给所有消费者做负载均衡
+    //给所有消费者做负载均衡,rebalanceService会调用这个方法
     public void doRebalance() {
         for (Map.Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
             MQConsumerInner impl = entry.getValue();
             if (impl != null) {
                 try {
+                    //给每一个consumerGroup做负载均衡
                     impl.doRebalance();
                 } catch (Throwable e) {
                     log.error("doRebalance exception", e);
@@ -1086,6 +1093,12 @@ public class MQClientInstance {
         return 0;
     }
 
+    /**
+     * 查找当前的topic下的cid信息
+     * 随机选择一台brokerName，优先选择master节点
+     * 这里要注意，因为每一个mqClientInstance都会上报自己的信息到所有的broker，所以这边从某一台broker拉去到的cidList,就是订阅该topic的所有cidList
+     * @author youzhihao
+     */
     public List<String> findConsumerIdList(final String topic, final String group) {
         String brokerAddr = this.findBrokerAddrByTopic(topic);
         if (null == brokerAddr) {

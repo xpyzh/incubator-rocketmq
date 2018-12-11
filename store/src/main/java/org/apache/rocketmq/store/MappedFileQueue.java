@@ -43,7 +43,7 @@ public class MappedFileQueue {
     private final CopyOnWriteArrayList<MappedFile> mappedFiles = new CopyOnWriteArrayList<MappedFile>();
 
     private final AllocateMappedFileService allocateMappedFileService;
-
+    //维护当前刷盘的位移信息
     private long flushedWhere = 0;
     private long committedWhere = 0;
 
@@ -430,12 +430,19 @@ public class MappedFileQueue {
         return deleteCount;
     }
 
+    /**
+     * 根据当前刷盘的位移，来进行刷盘(不包含一级缓存情况下的刷盘，默认)
+     * @author youzhihao
+     */
     public boolean flush(final int flushLeastPages) {
         boolean result = true;
+        //根据当前的flushedWhere维护的offset，寻找对应的MappedFile
         MappedFile mappedFile = this.findMappedFileByOffset(this.flushedWhere, this.flushedWhere == 0);
         if (mappedFile != null) {
             long tmpTimeStamp = mappedFile.getStoreTimestamp();
+            //刷盘
             int offset = mappedFile.flush(flushLeastPages);
+            //指定最新的flushedWhere位置
             long where = mappedFile.getFileFromOffset() + offset;
             result = where == this.flushedWhere;
             this.flushedWhere = where;
@@ -447,11 +454,18 @@ public class MappedFileQueue {
         return result;
     }
 
+    /**
+     * 根据当前刷盘的位移，来进行刷盘(包含一级缓存的情况下的刷盘)
+     * @author youzhihao
+     */
     public boolean commit(final int commitLeastPages) {
         boolean result = true;
+        //根据当前的flushedWhere维护的offset，寻找对应的MappedFile
         MappedFile mappedFile = this.findMappedFileByOffset(this.committedWhere, this.committedWhere == 0);
         if (mappedFile != null) {
+            //刷盘
             int offset = mappedFile.commit(commitLeastPages);
+            //指定最新的flushedWhere位置
             long where = mappedFile.getFileFromOffset() + offset;
             result = where == this.committedWhere;
             this.committedWhere = where;
@@ -462,7 +476,7 @@ public class MappedFileQueue {
 
     /**
      * Finds a mapped file by offset.
-     *
+     * 根据指定的offset，在MappedFileQueue寻找对应的MappedFile
      * @param offset Offset.
      * @param returnFirstOnNotFound If the mapped file is not found, then return the first one.
      * @return Mapped file or null (when not found and returnFirstOnNotFound is <code>false</code>).
@@ -472,6 +486,7 @@ public class MappedFileQueue {
             MappedFile firstMappedFile = this.getFirstMappedFile();
             MappedFile lastMappedFile = this.getLastMappedFile();
             if (firstMappedFile != null && lastMappedFile != null) {
+                //如果offset不在firstMappedFile队列位移的范围内，则是异常情况
                 if (offset < firstMappedFile.getFileFromOffset() || offset >= lastMappedFile.getFileFromOffset() + this.mappedFileSize) {
                     LOG_ERROR.warn("Offset not matched. Request offset: {}, firstOffset: {}, lastOffset: {}, mappedFileSize: {}, mappedFiles count: {}",
                         offset,
@@ -480,18 +495,19 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                    //找出指定offset在mappedFiles队列的index
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
                         targetFile = this.mappedFiles.get(index);
                     } catch (Exception ignored) {
                     }
-
+                    //检查offset是否在指定的MappedFile范围内
                     if (targetFile != null && offset >= targetFile.getFileFromOffset()
                         && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
                         return targetFile;
                     }
-
+                    //计算index的方法查找MappedFile失败，则遍历寻找
                     for (MappedFile tmpMappedFile : this.mappedFiles) {
                         if (offset >= tmpMappedFile.getFileFromOffset()
                             && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
@@ -499,7 +515,7 @@ public class MappedFileQueue {
                         }
                     }
                 }
-
+                //如果都没找到，则返回第一个
                 if (returnFirstOnNotFound) {
                     return firstMappedFile;
                 }

@@ -16,12 +16,14 @@
  */
 package org.apache.rocketmq.client.consumer.rebalance;
 
+import com.alibaba.fastjson.JSONObject;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.rocketmq.client.consumer.AllocateMessageQueueStrategy;
 import org.apache.rocketmq.client.log.ClientLogger;
-import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.MessageQueue;
+import org.apache.rocketmq.logging.InternalLogger;
 
 /**
  * Average Hashing queue algorithm
@@ -31,6 +33,9 @@ public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrate
     private final InternalLogger log = ClientLogger.getLog();
 
     /**
+     * cidAll的数量不能超过mq队列的数量，否则多出来的cid分配不到messageQueue
+     * 详细看下面的单元测试
+     * 结论，一个messageQueue只能被一个cid消费，这个回头看broker内部实现
      * @param currentCID：MQClientInstance的cid
      * @param mqAll:所有队列
      * @param cidAll:所有MQClientInstance实例
@@ -74,5 +79,34 @@ public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrate
     @Override
     public String getName() {
         return "AVG";
+    }
+
+    // 负载均衡算法进行测试
+    // 所有策略都是相同结果:cidAll的数量不能超过mq队列的数量，否则多出来的cid分配不到messageQueue
+    public static void main(String[] args) {
+        int mqCount = 5;
+        int cidCount = 10;
+        String groupName = "test";
+        List<AllocateMessageQueueStrategy> strategyList = new ArrayList<AllocateMessageQueueStrategy>();
+        strategyList.add(new AllocateMessageQueueAveragely());
+        strategyList.add(new AllocateMessageQueueAveragelyByCircle());
+        strategyList.add(new AllocateMessageQueueConsistentHash());
+        List<String> cidAll = new ArrayList<String>();
+        List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
+        for (int i = 0; i < cidCount; i++) {
+            cidAll.add("cid-" + i);
+        }
+        for (int i = 0; i < mqCount; i++) {
+            mqAll.add(new MessageQueue(groupName, "brokerName", i));
+        }
+        //计算每一个cid，分配到的messageQueue
+        for (AllocateMessageQueueStrategy strategy : strategyList) {
+            System.out.println(MessageFormat.format("-----------开始计算负载均衡:{0}----------", strategy.getClass()));
+            System.out.println(MessageFormat.format("cidCount={0},mqCount={1}", mqCount, cidCount));
+            for (String cid : cidAll) {
+                List<MessageQueue> result = strategy.allocate(groupName, cid, mqAll, cidAll);
+                System.out.println(MessageFormat.format("cidName={0},messageQueue={1}", cid, JSONObject.toJSON(result)));
+            }
+        }
     }
 }

@@ -51,9 +51,11 @@ public class MappedFile extends ReferenceResource {
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
     //ADD BY ChenYang
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
+    //刷盘的位移
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
     //MappedFile的大小
     protected int fileSize;
+    //对应文件的fileChannel
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
@@ -179,7 +181,7 @@ public class MappedFile extends ReferenceResource {
             log.error("map file " + this.fileName + " Failed. ", e);
             throw e;
         } finally {
-            if (!ok && this.fileChannel != null) {
+            if (!ok && this.fileChannel != null) {//如果失败，则关闭fileChannel
                 this.fileChannel.close();
             }
         }
@@ -284,9 +286,14 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
+     * mappedFile刷盘
+     * @param flushLeastPages
+     * flushLeastPages=0:如果写位移>刷盘位移,则刷盘
+     * flushLeastPages>0:如果写位移-刷盘位移>=flushLeastPages*OS_PAGE_SIZE,则刷盘(OS_PAGE_SIZE为4kb)
      * @return The current flushed position
      */
     public int flush(final int flushLeastPages) {
+        //判断能否刷盘
         if (this.isAbleToFlush(flushLeastPages)) {
             if (this.hold()) {
                 int value = getReadPosition();
@@ -295,7 +302,7 @@ public class MappedFile extends ReferenceResource {
                     //We only append data to fileChannel or mappedByteBuffer, never both.
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
                         this.fileChannel.force(false);
-                    } else {
+                    } else {//默认
                         this.mappedByteBuffer.force();
                     }
                 } catch (Throwable e) {
@@ -353,18 +360,22 @@ public class MappedFile extends ReferenceResource {
         }
     }
 
+    /**
+     * 判断mappedFile是否能够刷盘
+     * @author youzhihao
+     */
     private boolean isAbleToFlush(final int flushLeastPages) {
         int flush = this.flushedPosition.get();
         int write = getReadPosition();
-
+        //如果当前mappedFile已经写满了,返回true
         if (this.isFull()) {
             return true;
         }
-
+        //OS_PAGE_SIZE=1024*4,如果写位移-刷盘位移>=flushLeastPages个页数量，则刷盘,默认一页4kb
         if (flushLeastPages > 0) {
             return ((write / OS_PAGE_SIZE) - (flush / OS_PAGE_SIZE)) >= flushLeastPages;
         }
-
+        //写位移>刷盘位移，则返回true
         return write > flush;
     }
 

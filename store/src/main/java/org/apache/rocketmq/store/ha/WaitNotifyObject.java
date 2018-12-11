@@ -77,6 +77,7 @@ public class WaitNotifyObject {
     }
 
     public void allWaitForRunning(long interval) {
+        //获取当前线程id
         long currentThreadId = Thread.currentThread().getId();
         synchronized (this) {
             Boolean notified = this.waitingThreadTable.get(currentThreadId);

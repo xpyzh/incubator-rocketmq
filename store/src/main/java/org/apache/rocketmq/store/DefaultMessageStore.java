@@ -231,7 +231,7 @@ public class DefaultMessageStore implements MessageStore {
             this.reputMessageService.setReputFromOffset(this.commitLog.getMaxOffset());
         }
         this.reputMessageService.start();
-
+        //启动ha
         this.haService.start();
 
         this.createTempFile();
@@ -801,6 +801,10 @@ public class DefaultMessageStore implements MessageStore {
         return this.commitLog.getData(offset);
     }
 
+    /**
+     * slave节点追加master发送的消息(ha)
+     * @author youzhihao
+     */
     @Override
     public boolean appendToCommitLog(long startOffset, byte[] data) {
         if (this.shutdown) {

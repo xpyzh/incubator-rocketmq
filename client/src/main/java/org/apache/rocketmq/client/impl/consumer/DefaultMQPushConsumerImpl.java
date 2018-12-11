@@ -93,6 +93,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     private static final long CONSUMER_TIMEOUT_MILLIS_WHEN_SUSPEND = 1000 * 30;
     private final InternalLogger log = ClientLogger.getLog();
     private final DefaultMQPushConsumer defaultMQPushConsumer;
+    //每个conusmer一个RebalancePushImpl
     private final RebalanceImpl rebalanceImpl = new RebalancePushImpl(this);
     private final ArrayList<FilterMessageHook> filterMessageHookList = new ArrayList<FilterMessageHook>();
     private final long consumerStartTimestamp = System.currentTimeMillis();
@@ -104,7 +105,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     private PullAPIWrapper pullAPIWrapper;
     private volatile boolean pause = false;
     private boolean consumeOrderly = false;
+    //消息获取后的回调(业务逻辑处理)
     private MessageListener messageListenerInner;
+    //管理消费者offset的类
+    //1.CLUSTERING模式为:RemoteBrokerOffsetStore 2.BROADCASTING模式为:LocalFileOffsetStore
     private OffsetStore offsetStore;
     //真正的MessageListener内的逻辑在这个service里面处理
     private ConsumeMessageService consumeMessageService;
@@ -580,16 +584,16 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 // 初始化负载均衡参数
                 this.rebalanceImpl.setConsumerGroup(this.defaultMQPushConsumer.getConsumerGroup());
                 this.rebalanceImpl.setMessageModel(this.defaultMQPushConsumer.getMessageModel());
-                // 默认算法为:AllocateMessageQueueAveragely
+                // 默认算法为AllocateMessageQueueAveragely
                 this.rebalanceImpl.setAllocateMessageQueueStrategy(this.defaultMQPushConsumer.getAllocateMessageQueueStrategy());
                 this.rebalanceImpl.setmQClientFactory(this.mQClientFactory);
                 // todo:
                 this.pullAPIWrapper = new PullAPIWrapper(
                     mQClientFactory,
                     this.defaultMQPushConsumer.getConsumerGroup(), isUnitMode());
-                // todo:
+                // 注册message接收后的过滤器
                 this.pullAPIWrapper.registerFilterMessageHook(filterMessageHookList);
-                // 初始化offset
+                // 初始化offset存储容器
                 if (this.defaultMQPushConsumer.getOffsetStore() != null) {
                     this.offsetStore = this.defaultMQPushConsumer.getOffsetStore();
                 } else {
@@ -619,7 +623,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 }
                 //初始化ConsumeMessageService
                 this.consumeMessageService.start();
-
+                //注册consumer到MQClientInstance
                 boolean registerOK = mQClientFactory.registerConsumer(this.defaultMQPushConsumer.getConsumerGroup(), this);
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
@@ -838,7 +842,6 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     this.rebalanceImpl.getSubscriptionInner().put(topic, subscriptionData);
                 }
             }
-            //正常情况无用
             if (null == this.messageListenerInner) {
                 this.messageListenerInner = this.defaultMQPushConsumer.getMessageListener();
             }
@@ -847,6 +850,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 case BROADCASTING:
                     break;
                 case CLUSTERING:
+                    //CLUSTERING模式下，每一个consumerGroup都有自己的一个重试topic，队列数量为1，topicName=%RETRY%${groupName}
                     final String retryTopic = MixAll.getRetryTopic(this.defaultMQPushConsumer.getConsumerGroup());
                     SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(this.defaultMQPushConsumer.getConsumerGroup(),
                         retryTopic, SubscriptionData.SUB_ALL);
