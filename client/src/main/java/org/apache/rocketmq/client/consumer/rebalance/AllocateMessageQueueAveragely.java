@@ -19,7 +19,9 @@ package org.apache.rocketmq.client.consumer.rebalance;
 import com.alibaba.fastjson.JSONObject;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.rocketmq.client.consumer.AllocateMessageQueueStrategy;
 import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.common.message.MessageQueue;
@@ -83,9 +85,13 @@ public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrate
 
     // 负载均衡算法进行测试
     // 所有策略都是相同结果:cidAll的数量不能超过mq队列的数量，否则多出来的cid分配不到messageQueue
+    // 当部分queue失效(master和所有slave都失效)，可以看出,只有AllocateMessageQueueConsistentHash不会改变当前消费的负载均衡
     public static void main(String[] args) {
-        int mqCount = 5;
-        int cidCount = 10;
+        int mqCount = 12;
+        int cidCount = 6;
+        Set<Integer> failQueueIds = new HashSet<Integer>();
+        //failQueueIds.add(4);
+        //failQueueIds.add(5);
         String groupName = "test";
         List<AllocateMessageQueueStrategy> strategyList = new ArrayList<AllocateMessageQueueStrategy>();
         strategyList.add(new AllocateMessageQueueAveragely());
@@ -97,6 +103,10 @@ public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrate
             cidAll.add("cid-" + i);
         }
         for (int i = 0; i < mqCount; i++) {
+            //模拟fail的节点
+            if (failQueueIds.contains(i)) {
+                continue;
+            }
             mqAll.add(new MessageQueue(groupName, "brokerName", i));
         }
         //计算每一个cid，分配到的messageQueue

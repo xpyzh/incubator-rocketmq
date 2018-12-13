@@ -327,7 +327,9 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
 
     /**
      * Same to {@link #send(Message, SendCallback)} with target message queue specified.
-     *
+     * 特别注意 sendCallback中不要写过重的逻辑，异步发送过程是RemotingClient.getCallbackExecutor获取的线程池执行的，同时SendCallback也是由这个线程池回调的
+     * 这个和消费者注册监听器异步消费大不一样，消费者异步消费是由ConsumeMessageService内部单独的一个线程池去回调注册的MessageListener
+     * @see org.apache.rocketmq.client.consumer.DefaultMQPushConsumer#registerMessageListener
      * @param msg Message to send.
      * @param mq Target message queue.
      * @param sendCallback Callback to execute on sending completed, either successful or unsuccessful.

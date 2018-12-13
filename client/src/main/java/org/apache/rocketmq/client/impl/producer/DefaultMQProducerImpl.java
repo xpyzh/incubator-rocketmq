@@ -707,7 +707,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         }
         SendMessageContext context = null;
         if (brokerAddr != null) {
-            //如果开启vipChannel，发送走专门的端口
+            //如果开启vipChannel，发送走专门的端口(10911-2)
             brokerAddr = MixAll.brokerVIPChannel(this.defaultMQProducer.isSendMessageWithVIPChannel(), brokerAddr);
             byte[] prevBody = msg.getBody();
             try {
@@ -776,7 +776,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 requestHeader.setReconsumeTimes(0);
                 requestHeader.setUnitMode(this.isUnitMode());
                 requestHeader.setBatch(msg instanceof MessageBatch);
-                //todo:%RETRY%应该是重试队列?
+                //处理consumer消费失败的重试消息重试队列
                 if (requestHeader.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                     String reconsumeTimes = MessageAccessor.getReconsumeTime(msg);
                     if (reconsumeTimes != null) {
@@ -1073,6 +1073,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     /**
      * 选择消息将要发送队列
+     * todo:这里如果是同步发送，没有重试机制吗？
      * @author youzhihao
      */
     private SendResult sendSelectImpl(

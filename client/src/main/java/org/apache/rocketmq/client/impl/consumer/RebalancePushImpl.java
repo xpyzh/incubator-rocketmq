@@ -220,6 +220,10 @@ public class RebalancePushImpl extends RebalanceImpl {
         return result;
     }
 
+    /**
+     * 将pull任务请求放入专门执行拉去消息的队列里，等待专门的pull消息线程拉去消息
+     * @author youzhihao
+     */
     @Override
     public void dispatchPullRequest(List<PullRequest> pullRequestList) {
         for (PullRequest pullRequest : pullRequestList) {

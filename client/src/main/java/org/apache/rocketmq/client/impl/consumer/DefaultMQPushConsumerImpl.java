@@ -293,14 +293,16 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         //状态，限流等的检查----结束
         final long beginTimestamp = System.currentTimeMillis();
 
+        //发送pull请求给broker，broker返回消息后的回调
         PullCallback pullCallback = new PullCallback() {
             @Override
-            public void onSuccess(PullResult pullResult) {
+            public void onSuccess(PullResult pullResult) {//broker返回的消息解析成功
                 if (pullResult != null) {
-                    //处理PullResult，主要是做消息的decode，过滤操作
+                    //处理PullResult:
+                    //1. 主要是做消息的decode(byte-> List<MessageExt>)，
+                    //2. 过滤,比如过滤出需要的tag，如果有client过滤钩子，则执行filter进行再次过滤，筛选出需要的message
                     pullResult = DefaultMQPushConsumerImpl.this.pullAPIWrapper.processPullResult(pullRequest.getMessageQueue(), pullResult,
                         subscriptionData);
-
                     switch (pullResult.getPullStatus()) {
                         case FOUND:
                             long prevRequestOffset = pullRequest.getNextOffset();
@@ -361,14 +363,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
                             DefaultMQPushConsumerImpl.this.executePullRequestImmediately(pullRequest);
                             break;
-                        case OFFSET_ILLEGAL:
+                        case OFFSET_ILLEGAL://如果发现pull请求拉去过来的数据的offset和客户端不一致，则重新同步一次offset到broker
                             log.warn("the pull request offset illegal, {} {}",
                                 pullRequest.toString(), pullResult.toString());
                             pullRequest.setNextOffset(pullResult.getNextBeginOffset());
 
                             pullRequest.getProcessQueue().setDropped(true);
                             DefaultMQPushConsumerImpl.this.executeTaskLater(new Runnable() {
-
                                 @Override
                                 public void run() {
                                     try {
@@ -393,11 +394,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             }
 
             @Override
-            public void onException(Throwable e) {
+            public void onException(Throwable e) { ///broker返回的消息解析失败,3秒后重新拉去
                 if (!pullRequest.getMessageQueue().getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                     log.warn("execute the pull request exception", e);
                 }
-
                 DefaultMQPushConsumerImpl.this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_EXCEPTION);
             }
         };
@@ -475,6 +475,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         return this.mQClientFactory.getConsumerStatsManager();
     }
 
+    //将pull请求任务加入pullMessageService的队列
     public void executePullRequestImmediately(final PullRequest pullRequest) {
         this.mQClientFactory.getPullMessageService().executePullRequestImmediately(pullRequest);
     }

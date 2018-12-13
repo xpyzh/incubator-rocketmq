@@ -157,11 +157,13 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Minimum consumer thread number
+     * 核心参数，实际处理registerMessageListener注册的MessageListener的逻辑
      */
     private int consumeThreadMin = 20;
 
     /**
      * Max consumer thread number
+     * 核心参数，实际处理registerMessageListener注册的MessageListener的逻辑
      */
     private int consumeThreadMax = 64;
 
@@ -562,7 +564,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Register a callback to execute on message arrival for orderly consuming.
-     *
+     * 注册顺序消费队列(ConsumeMessageOrderlyService),每个messageQueue同时只能有一个线程消费
      * @param messageListener message handling callback.
      */
     @Override

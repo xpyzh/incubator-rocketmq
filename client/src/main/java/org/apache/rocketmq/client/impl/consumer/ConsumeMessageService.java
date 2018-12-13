@@ -21,6 +21,7 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.body.ConsumeMessageDirectlyResult;
 
+//一个consumerGroup一个
 public interface ConsumeMessageService {
     void start();
 
@@ -33,7 +34,7 @@ public interface ConsumeMessageService {
     void decCorePoolSize();
 
     int getCorePoolSize();
-
+    //同步消费
     ConsumeMessageDirectlyResult consumeMessageDirectly(final MessageExt msg, final String brokerName);
 
     void submitConsumeRequest(

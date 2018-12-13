@@ -56,6 +56,7 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
     public void load() {
     }
 
+    //更新缓存
     @Override
     public void updateOffset(MessageQueue mq, long offset, boolean increaseOnly) {
         if (mq != null) {
@@ -63,7 +64,6 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
             if (null == offsetOld) {
                 offsetOld = this.offsetTable.putIfAbsent(mq, new AtomicLong(offset));
             }
-
             if (null != offsetOld) {
                 if (increaseOnly) {
                     MixAll.compareAndIncreaseOnly(offsetOld, offset);
@@ -140,7 +140,6 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                 }
             }
         }
-
         if (!unusedMQ.isEmpty()) {
             for (MessageQueue mq : unusedMQ) {
                 this.offsetTable.remove(mq);

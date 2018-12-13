@@ -151,10 +151,10 @@ public abstract class NettyRemotingAbstract {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
-                case REQUEST_COMMAND://客户端请求的处理
+                case REQUEST_COMMAND://broker直接发送请求的处理
                     processRequestCommand(ctx, cmd);
                     break;
-                case RESPONSE_COMMAND://服务端发送请求后，接收和处理客户端的返回
+                case RESPONSE_COMMAND://客户端发送请求后，broker返回消息给客户端后的处理
                     processResponseCommand(ctx, cmd);
                     break;
                 default:
@@ -275,7 +275,7 @@ public abstract class NettyRemotingAbstract {
 
             responseTable.remove(opaque);
 
-            if (responseFuture.getInvokeCallback() != null) {
+            if (responseFuture.getInvokeCallback() != null) {//服务端返回消息后执行相应回调
                 executeInvokeCallback(responseFuture);
             } else {
                 responseFuture.putResponse(cmd);

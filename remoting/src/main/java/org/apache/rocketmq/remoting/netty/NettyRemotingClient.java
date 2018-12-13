@@ -94,7 +94,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     /**
      * Invoke the callback methods in this executor when process response.
-     * 专门处理返回的线程池,如果没有指定则使用publicExecutor
+     * 专门接受服务端返回消息的回调的线程池,如果没有指定则使用publicExecutor
      */
     private ExecutorService callbackExecutor;
     private final ChannelEventListener channelEventListener;

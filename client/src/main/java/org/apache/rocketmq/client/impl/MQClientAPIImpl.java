@@ -600,7 +600,7 @@ public class MQClientAPIImpl {
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.PULL_MESSAGE, requestHeader);
 
         switch (communicationMode) {
-            case ONEWAY:
+            case ONEWAY://不行，因为发送消息拉去的请求后，需要broker返回消息
                 assert false;
                 return null;
             case ASYNC:
@@ -622,12 +622,13 @@ public class MQClientAPIImpl {
         final long timeoutMillis,
         final PullCallback pullCallback
     ) throws RemotingException, InterruptedException {
-        this.remotingClient.invokeAsync(addr, request, timeoutMillis, new InvokeCallback() {
+        this.remotingClient.invokeAsync(addr, request, timeoutMillis, new InvokeCallback() {//请求broker后，broker返回信息后的回调
             @Override
             public void operationComplete(ResponseFuture responseFuture) {
                 RemotingCommand response = responseFuture.getResponseCommand();
                 if (response != null) {
                     try {
+                        //处理返回信息,这时候message还只有byte[]类型
                         PullResult pullResult = MQClientAPIImpl.this.processPullResponse(response);
                         assert pullResult != null;
                         pullCallback.onSuccess(pullResult);
@@ -658,6 +659,7 @@ public class MQClientAPIImpl {
         return this.processPullResponse(response);
     }
 
+    //解析RemotingCommand->PullResult
     private PullResult processPullResponse(
         final RemotingCommand response) throws MQBrokerException, RemotingCommandException {
         PullStatus pullStatus = PullStatus.NO_NEW_MSG;
@@ -674,7 +676,6 @@ public class MQClientAPIImpl {
             case ResponseCode.PULL_OFFSET_MOVED:
                 pullStatus = PullStatus.OFFSET_ILLEGAL;
                 break;
-
             default:
                 throw new MQBrokerException(response.getCode(), response.getRemark());
         }

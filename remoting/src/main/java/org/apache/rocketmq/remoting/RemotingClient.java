@@ -35,6 +35,11 @@ public interface RemotingClient extends RemotingService {
         final long timeoutMillis) throws InterruptedException, RemotingConnectException,
         RemotingSendRequestException, RemotingTimeoutException;
 
+    /**
+     * 异步调用
+     * @param invokeCallback 是broker收到请求后，返回相应的消息的回调
+     * @author youzhihao
+     */
     void invokeAsync(final String addr, final RemotingCommand request, final long timeoutMillis,
         final InvokeCallback invokeCallback) throws InterruptedException, RemotingConnectException,
         RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException;

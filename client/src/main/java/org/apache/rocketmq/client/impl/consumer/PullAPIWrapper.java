@@ -80,6 +80,7 @@ public class PullAPIWrapper {
 
             List<MessageExt> msgListFilterAgain = msgList;
             //如果有tag，则过滤出需要订阅的tag
+            //consumerGroup会读取queue中所有消息，如果不符合tag的直接扔了,因此同一个consumerGroup只能指定一种tag表达式,否则会造成消息丢失的情况
             if (!subscriptionData.getTagsSet().isEmpty() && !subscriptionData.isClassFilterMode()) {
                 msgListFilterAgain = new ArrayList<MessageExt>(msgList.size());
                 for (MessageExt msg : msgList) {
@@ -103,12 +104,11 @@ public class PullAPIWrapper {
                 if (traFlag != null && Boolean.parseBoolean(traFlag)) {
                     msg.setTransactionId(msg.getProperty(MessageConst.PROPERTY_UNIQ_CLIENT_MESSAGE_ID_KEYIDX));
                 }
-                MessageAccessor.putProperty(msg, MessageConst.PROPERTY_MIN_OFFSET,
+                MessageAccessor.putProperty(msg, MessageConst.PROPERTY_MIN_OFFSET,//这批消息的最小offset
                     Long.toString(pullResult.getMinOffset()));
-                MessageAccessor.putProperty(msg, MessageConst.PROPERTY_MAX_OFFSET,
+                MessageAccessor.putProperty(msg, MessageConst.PROPERTY_MAX_OFFSET,//这批消息的最大offset
                     Long.toString(pullResult.getMaxOffset()));
             }
-
             pullResultExt.setMsgFoundList(msgListFilterAgain);
         }
         //回收二进制内存
@@ -156,11 +156,11 @@ public class PullAPIWrapper {
         final CommunicationMode communicationMode,
         final PullCallback pullCallback
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
-        //获取broker信息
+        //获取broker地址信息
         FindBrokerResult findBrokerResult =
             this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
-                this.recalculatePullFromWhichNode(mq), false);
-        if (null == findBrokerResult) {
+                this.recalculatePullFromWhichNode(mq), false);//默认优先获取master的地址
+        if (null == findBrokerResult) {//尝试更新路由信息后再次获取broker地址信息
             this.mQClientFactory.updateTopicRouteInfoFromNameServer(mq.getTopic());
             findBrokerResult =
                 this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
@@ -241,6 +241,10 @@ public class PullAPIWrapper {
         );
     }
 
+    /**
+     * 如果有suggest，则找suggest中缓存的brokerId,没有则找master节点(brokerId=0)
+     * @author youzhihao
+     */
     public long recalculatePullFromWhichNode(final MessageQueue mq) {
         //默认是false,只有在filtersrv服务中才会设置为true
         if (this.isConnectBrokerByUser()) {

@@ -1054,6 +1054,13 @@ public class MQClientInstance {
         return null;
     }
 
+    /**
+     * 更具指定的brokerName，发现地址
+     * @param brokerName 指定brokerName
+     * @param brokerId 指定brokerId
+     * @param onlyThisBroker 如果没有找到指定的brokerId及诶按，是否可以找其他brokerId节点代替
+     * @author youzhihao
+     */
     public FindBrokerResult findBrokerAddressInSubscribe(
         final String brokerName,
         final long brokerId,
@@ -1069,7 +1076,7 @@ public class MQClientInstance {
             slave = brokerId != MixAll.MASTER_ID;
             found = brokerAddr != null;
 
-            if (!found && !onlyThisBroker) {
+            if (!found && !onlyThisBroker) {//如果没有找到指定brokerId，尝试找其他节点
                 Entry<Long, String> entry = map.entrySet().iterator().next();
                 brokerAddr = entry.getValue();
                 slave = entry.getKey() != MixAll.MASTER_ID;

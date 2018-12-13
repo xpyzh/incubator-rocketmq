@@ -16,6 +16,7 @@
  */
 package org.apache.rocketmq.client.consumer.listener;
 
+//顺序消费监听器的返回不存在失败情况
 public enum ConsumeOrderlyStatus {
     /**
      * Success consumption

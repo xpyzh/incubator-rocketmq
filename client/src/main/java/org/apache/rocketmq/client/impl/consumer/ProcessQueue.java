@@ -37,6 +37,8 @@ import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 /**
  * Queue consumption snapshot
  * 维护当前消费的的消费队列的快照信息
+ * 和MessageQueue一一对应
+ * 在pullRequest中进行组装
  */
 public class ProcessQueue {
     public final static long REBALANCE_LOCK_MAX_LIVE_TIME =
@@ -91,7 +93,6 @@ public class ProcessQueue {
                     if (!msgTreeMap.isEmpty() && System.currentTimeMillis() - Long.parseLong(MessageAccessor.getConsumeStartTimeStamp(msgTreeMap.firstEntry().getValue())) > pushConsumer.getConsumeTimeout() * 60 * 1000) {
                         msg = msgTreeMap.firstEntry().getValue();
                     } else {
-
                         break;
                     }
                 } finally {
@@ -100,7 +101,6 @@ public class ProcessQueue {
             } catch (InterruptedException e) {
                 log.error("getExpiredMsg exception", e);
             }
-
             try {
                 //将该消息推送回broker(Send message back to broker which will be re-delivered in future.)
                 pushConsumer.sendMessageBack(msg, 3);

@@ -48,7 +48,7 @@ public abstract class RebalanceImpl {
     protected static final InternalLogger log = ClientLogger.getLog();
     //维护负载均衡后，该消费者需要消费的队列信息
     protected final ConcurrentMap<MessageQueue, ProcessQueue> processQueueTable = new ConcurrentHashMap<MessageQueue, ProcessQueue>(64);
-    //topic下的queue信息,这里的订阅信息是由定时任务调用MQClientInstance.this.updateTopicRouteInfoFromNameServer()获取
+    //topic下所有master服务器的queue信息,这里的订阅信息是由定时任务调用MQClientInstance.this.updateTopicRouteInfoFromNameServer()获取
     protected final ConcurrentMap<String/* topic */, Set<MessageQueue>> topicSubscribeInfoTable =
         new ConcurrentHashMap<String, Set<MessageQueue>>();
     //topic下的订阅信息
@@ -281,7 +281,7 @@ public abstract class RebalanceImpl {
                     List<MessageQueue> mqAll = new ArrayList<MessageQueue>();
                     mqAll.addAll(mqSet);
 
-                    Collections.sort(mqAll);
+                    Collections.sort(mqAll);//排序维度:topicName,brokerName,queueId
                     Collections.sort(cidAll);
 
                     AllocateMessageQueueStrategy strategy = this.allocateMessageQueueStrategy;
@@ -409,7 +409,7 @@ public abstract class RebalanceImpl {
                 }
             }
         }
-        //推送一次pull请求
+        //如果负载均衡更新后新增的processQueueTable信息，则推送一次pull请求
         this.dispatchPullRequest(pullRequestList);
 
         return changed;

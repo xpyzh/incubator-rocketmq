@@ -30,6 +30,8 @@ public class SubscriptionData implements Comparable<SubscriptionData> {
     public final static String SUB_ALL = "*";
     private boolean classFilterMode = false;
     private String topic;
+    //默认subString存tag表达式
+    //当classFilterMode=true，存过滤类名
     private String subString;
     private Set<String> tagsSet = new HashSet<String>();
     private Set<Integer> codeSet = new HashSet<Integer>();
@@ -37,7 +39,7 @@ public class SubscriptionData implements Comparable<SubscriptionData> {
     private String expressionType = ExpressionType.TAG;
 
     @JSONField(serialize = false)
-    private String filterClassSource;
+    private String filterClassSource;//服务端过滤的类代码
 
     public SubscriptionData() {
 

@@ -27,9 +27,10 @@ import org.apache.rocketmq.common.ServiceThread;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.utils.ThreadUtils;
 
-//负责拉去消费者订阅的message的线程,todo:看消费者再去看
+//负责处理PullRequest请求，然后调用后续实际的拉去消息的逻辑
 public class PullMessageService extends ServiceThread {
     private final InternalLogger log = ClientLogger.getLog();
+    //维护pull消息的请求
     private final LinkedBlockingQueue<PullRequest> pullRequestQueue = new LinkedBlockingQueue<PullRequest>();
     private final MQClientInstance mQClientFactory;
     private final ScheduledExecutorService scheduledExecutorService = Executors
@@ -65,6 +66,7 @@ public class PullMessageService extends ServiceThread {
         }
     }
 
+    //延迟加入pull请求队列
     public void executeTaskLater(final Runnable r, final long timeDelay) {
         if (!isStopped()) {
             this.scheduledExecutorService.schedule(r, timeDelay, TimeUnit.MILLISECONDS);
