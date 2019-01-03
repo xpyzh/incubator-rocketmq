@@ -158,10 +158,8 @@ public class MappedFileQueue {
                         + " length not matched message store config value, ignore it");
                     return true;
                 }
-
                 try {
                     MappedFile mappedFile = new MappedFile(file.getPath(), mappedFileSize);
-
                     mappedFile.setWrotePosition(this.mappedFileSize);
                     mappedFile.setFlushedPosition(this.mappedFileSize);
                     mappedFile.setCommittedPosition(this.mappedFileSize);

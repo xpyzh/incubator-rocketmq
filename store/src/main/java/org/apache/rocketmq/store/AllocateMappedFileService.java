@@ -205,6 +205,7 @@ public class AllocateMappedFileService extends ServiceThread {
                 }
 
                 // pre write mappedFile
+                //这里非常重要，mmap磁盘文件到虚拟内存时，对虚拟内存进行预热，并且锁住对应的物理内存
                 if (mappedFile.getFileSize() >= this.messageStore.getMessageStoreConfig()
                     .getMapedFileSizeCommitLog()
                     &&

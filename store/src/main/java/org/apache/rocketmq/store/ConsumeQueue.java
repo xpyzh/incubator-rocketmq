@@ -26,7 +26,7 @@ import org.apache.rocketmq.store.config.StorePathConfigHelper;
 
 public class ConsumeQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
-
+    //默认consumeQueue就是20个字节为一个存储单位(long+int+long)=
     public static final int CQ_STORE_UNIT_SIZE = 20;
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
@@ -59,11 +59,11 @@ public class ConsumeQueue {
         String queueDir = this.storePath
             + File.separator + topic
             + File.separator + queueId;
-
+        //创建一个新的mappedFileQueue
         this.mappedFileQueue = new MappedFileQueue(queueDir, mappedFileSize, null);
 
         this.byteBufferIndex = ByteBuffer.allocate(CQ_STORE_UNIT_SIZE);
-
+        //默认false，暂时不看
         if (defaultMessageStore.getMessageStoreConfig().isEnableConsumeQueueExt()) {
             this.consumeQueueExt = new ConsumeQueueExt(
                 topic,
