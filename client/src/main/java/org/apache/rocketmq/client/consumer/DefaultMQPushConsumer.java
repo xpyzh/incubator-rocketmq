@@ -181,12 +181,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Concurrently max span offset.it has no effect on sequential consumption
+     * 单队列并行消费允许的最大跨度
      */
     private int consumeConcurrentlyMaxSpan = 2000;
 
     /**
      * Flow control threshold on queue level, each message queue will cache at most 1000 messages by default,
      * Consider the {@code pullBatchSize}, the instantaneous value may exceed the limit
+     * 拉消息本地队列缓存消息最大数
      * 单个queue的流量控制:数量默认1000
      */
     private int pullThresholdForQueue = 1000;
@@ -232,11 +234,13 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Batch consumption size
+     * 批量消费，一次消费多少条消息
      */
     private int consumeMessageBatchMaxSize = 1;
 
     /**
      * Batch pull size
+     * 批量拉消息，一次最多拉多少条
      */
     private int pullBatchSize = 32;
 

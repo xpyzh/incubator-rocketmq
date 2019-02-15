@@ -1095,7 +1095,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
 
     /**
      * 选择消息将要发送队列
-     * todo:这里如果是同步发送，没有重试机制吗？
+     * 如果是同步发送，没有重试机制吗？
      * @author youzhihao
      */
     private SendResult sendSelectImpl(

@@ -28,6 +28,11 @@ public class ConsumeConcurrentlyContext {
      * -1,no retry,put into DLQ directly<br>
      * 0,broker control retry frequency<br>
      * >0,client control retry frequency
+     *
+     * 在发送到broker后，走sendBack逻辑
+     * <0: 直接进入私信队列
+     * =0: 默认值,在broker端，会根据consumerTimes+3来定义delayLevel
+     * >0: 如果设置了，则会根据指定的delayLevel，进行延迟重新消费
      */
     private int delayLevelWhenNextConsume = 0;
     private int ackIndex = Integer.MAX_VALUE;

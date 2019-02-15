@@ -542,10 +542,11 @@ public class DefaultMQPullConsumerImpl implements MQConsumerInner {
             if (UtilAll.isBlank(consumerGroup)) {
                 consumerGroup = this.defaultMQPullConsumer.getConsumerGroup();
             }
-
+            //消费失败，发回broker，等待下次消费
             this.mQClientFactory.getMQClientAPIImpl().consumerSendMessageBack(brokerAddr, msg, consumerGroup, delayLevel, 3000,
                 this.defaultMQPullConsumer.getMaxReconsumeTimes());
         } catch (Exception e) {
+            //这里注意，如果发送失败，也算重试次数+1，并从正常的sync发送方式发一次,这样可以路由打其他master节点
             log.error("sendMessageBack Exception, " + this.defaultMQPullConsumer.getConsumerGroup(), e);
 
             Message newMsg = new Message(MixAll.getRetryTopic(this.defaultMQPullConsumer.getConsumerGroup()), msg.getBody());

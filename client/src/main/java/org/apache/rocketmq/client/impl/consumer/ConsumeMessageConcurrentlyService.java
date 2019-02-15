@@ -47,7 +47,7 @@ import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.body.CMResult;
 import org.apache.rocketmq.common.protocol.body.ConsumeMessageDirectlyResult;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
-
+//一个consumerGroup一个
 public class ConsumeMessageConcurrentlyService implements ConsumeMessageService {
     private static final InternalLogger log = ClientLogger.getLog();
     private final DefaultMQPushConsumerImpl defaultMQPushConsumerImpl;
@@ -260,21 +260,24 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
         final ConsumeConcurrentlyContext context,
         final ConsumeRequest consumeRequest
     ) {
-        int ackIndex = context.getAckIndex();
+        int ackIndex = context.getAckIndex();//默认ackIndex是Integer.MAX_VALUE.....
 
         if (consumeRequest.getMsgs().isEmpty())
             return;
         //统计
         switch (status) {
+            //如果MessageListenerConcurrently.consumeMessage()返回CONSUME_SUCCESS,可以通过设定ackIndex让当前批量消息的部分进行重试
             case CONSUME_SUCCESS:
+                //默认ackIndex是Integer.MAX_VALUE,所以默认这边的ackIndex一定大于consumeRequest.getMsgs().size()
                 if (ackIndex >= consumeRequest.getMsgs().size()) {
-                    ackIndex = consumeRequest.getMsgs().size() - 1;
+                    ackIndex = consumeRequest.getMsgs().size() - 1;//ackIndex设定为消息集合的最大index
                 }
                 int ok = ackIndex + 1;
                 int failed = consumeRequest.getMsgs().size() - ok;
                 this.getConsumerStatsManager().incConsumeOKTPS(consumerGroup, consumeRequest.getMessageQueue().getTopic(), ok);
                 this.getConsumerStatsManager().incConsumeFailedTPS(consumerGroup, consumeRequest.getMessageQueue().getTopic(), failed);
                 break;
+             //如果MessageListenerConcurrently.consumeMessage()返回RECONSUME_LATER,则ackIndex会置为-1，当前批量消息全部重试
             case RECONSUME_LATER:
                 ackIndex = -1;
                 this.getConsumerStatsManager().incConsumeFailedTPS(consumerGroup, consumeRequest.getMessageQueue().getTopic(),
@@ -293,9 +296,8 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                 }
                 break;
             case CLUSTERING:
-                //重试失败消息,从这里可以看出，可以在异步消费回调里面自己设置ack
                 List<MessageExt> msgBackFailed = new ArrayList<MessageExt>(consumeRequest.getMsgs().size());
-                //从ackIndex的下一个开始，是失败的
+                //从ackIndex的下一个开始，是失败的，发送到RETRY Topic进行重试
                 for (int i = ackIndex + 1; i < consumeRequest.getMsgs().size(); i++) {
                     MessageExt msg = consumeRequest.getMsgs().get(i);
                     //失败消息发送到失败消费者失败队列里面(重试次数是在这里生效的）
@@ -305,7 +307,7 @@ public class ConsumeMessageConcurrentlyService implements ConsumeMessageService 
                         msgBackFailed.add(msg);
                     }
                 }
-                if (!msgBackFailed.isEmpty()) {//如果塞回broker的重试队列失败，则5庙后重试这些失败的消息
+                if (!msgBackFailed.isEmpty()) {//如果塞回broker的重试队列失败，则5秒后重试这些失败的消息
                     consumeRequest.getMsgs().removeAll(msgBackFailed);
                     //5秒后重新处理失败消息
                     this.submitConsumeRequestLater(msgBackFailed, consumeRequest.getProcessQueue(), consumeRequest.getMessageQueue());
