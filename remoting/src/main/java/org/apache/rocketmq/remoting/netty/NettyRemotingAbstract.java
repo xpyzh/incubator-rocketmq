@@ -481,6 +481,7 @@ public abstract class NettyRemotingAbstract {
                             return;
                         }
                         //如果发送失败，则移除ResponseFuture，并且调用callback
+                        //从这里可以看出，只有io失败才会重试
                         requestFail(opaque);
                         log.warn("send a request command to channel <{}> failed.", RemotingHelper.parseChannelRemoteAddr(channel));
                     }

@@ -86,7 +86,6 @@ public class MQFaultStrategy {
             } catch (Exception e) {
                 log.error("Error occurred when selecting message queue", e);
             }
-
             return tpInfo.selectOneMessageQueue();
         }
         //默认走这里逻辑
