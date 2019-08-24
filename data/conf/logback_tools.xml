@@ -19,15 +19,14 @@
 <configuration>
     <appender name="DefaultAppender"
               class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${zd}/logs/rocketmqlogs/namesrv_default.log</file>
+        <file>${user.home}/logs/rocketmqlogs/tools_default.log</file>
         <append>true</append>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${user.home}/logs/rocketmqlogs/otherdays/namesrv_default.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${user.home}/logs/rocketmqlogs/otherdays/tools_default.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>5</maxIndex>
         </rollingPolicy>
-        <triggeringPolicy
-            class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
             <maxFileSize>100MB</maxFileSize>
         </triggeringPolicy>
         <encoder>
@@ -36,12 +35,12 @@
         </encoder>
     </appender>
 
-    <appender name="RocketmqNamesrvAppender_inner"
+    <appender name="RocketmqToolsAppender_inner"
               class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${user.home}/logs/rocketmqlogs/namesrv.log</file>
+        <file>${user.home}/logs/rocketmqlogs/tools.log</file>
         <append>true</append>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${user.home}/logs/rocketmqlogs/otherdays/namesrv.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${user.home}/logs/rocketmqlogs/otherdays/tools.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>5</maxIndex>
         </rollingPolicy>
@@ -54,37 +53,37 @@
             <charset class="java.nio.charset.Charset">UTF-8</charset>
         </encoder>
     </appender>
-    <appender name="RocketmqNamesrvAppender" class="ch.qos.logback.classic.AsyncAppender">
-        <appender-ref ref="RocketmqNamesrvAppender_inner"/>
-        <discardingThreshold>0</discardingThreshold>
+    <appender name="RocketmqToolsAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="RocketmqToolsAppender_inner"/>
     </appender>
+
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <append>true</append>
         <encoder>
-            <pattern>%d{yyy-MM-dd HH\:mm\:ss,SSS} %p %t - %m%n</pattern>
+            <pattern>%d{yyy-MM-dd HH\:mm\:ss,GMT+8} %p %t - %m%n</pattern>
             <charset class="java.nio.charset.Charset">UTF-8</charset>
         </encoder>
     </appender>
 
-    <logger name="RocketmqNamesrv" additivity="false">
+    <logger name="RocketmqTools" additivity="false">
         <level value="INFO"/>
-        <appender-ref ref="RocketmqNamesrvAppender"/>
+        <appender-ref ref="RocketmqToolsAppender"/>
     </logger>
 
     <logger name="RocketmqCommon" additivity="false">
         <level value="INFO"/>
-        <appender-ref ref="RocketmqNamesrvAppender"/>
+        <appender-ref ref="RocketmqBrokerAppender"/>
+    </logger>
+
+    <logger name="RocketmqStore" additivity="false">
+        <level value="INFO"/>
+        <appender-ref ref="RocketmqBrokerAppender"/>
     </logger>
 
     <logger name="RocketmqRemoting" additivity="false">
         <level value="INFO"/>
-        <appender-ref ref="RocketmqNamesrvAppender"/>
-    </logger>
-
-    <logger name="RocketmqNamesrvConsole" additivity="false">
-        <level value="INFO"/>
-        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="RocketmqBrokerAppender"/>
     </logger>
 
     <root>
