@@ -349,8 +349,8 @@ public class HAService {
         private long lastWriteTimestamp = System.currentTimeMillis();
         //当前slave节点上报的maxOffset
         private long currentReportedOffset = 0;
-        //记录当前处理的dispatchPostion
-        private int dispatchPostion = 0;
+        //记录当前处理的dispatchPosition
+        private int dispatchPosition = 0;
         private ByteBuffer byteBufferRead = ByteBuffer.allocate(READ_MAX_BUFFER_SIZE);
         private ByteBuffer byteBufferBackup = ByteBuffer.allocate(READ_MAX_BUFFER_SIZE);
 
@@ -396,14 +396,15 @@ public class HAService {
                 }
             }
 
+            lastWriteTimestamp = HAService.this.defaultMessageStore.getSystemClock().now();
             return !this.reportOffset.hasRemaining();
         }
 
         //如果空间不够，则将byteBufferRead内的写入到一个byteBufferBackup中，byteBufferBackup从位移0开始写，然后和byteBufferRead置换
         private void reallocateByteBuffer() {
-            int remain = READ_MAX_BUFFER_SIZE - this.dispatchPostion;
+            int remain = READ_MAX_BUFFER_SIZE - this.dispatchPosition;
             if (remain > 0) {
-                this.byteBufferRead.position(this.dispatchPostion);
+                this.byteBufferRead.position(this.dispatchPosition);
 
                 this.byteBufferBackup.position(0);
                 this.byteBufferBackup.limit(READ_MAX_BUFFER_SIZE);
@@ -414,7 +415,7 @@ public class HAService {
 
             this.byteBufferRead.position(remain);
             this.byteBufferRead.limit(READ_MAX_BUFFER_SIZE);
-            this.dispatchPostion = 0;
+            this.dispatchPosition = 0;
         }
 
         private void swapByteBuffer() {
@@ -429,7 +430,6 @@ public class HAService {
                 try {
                     int readSize = this.socketChannel.read(this.byteBufferRead);//读取内容到byteBufferRead,当前position=position+readSize
                     if (readSize > 0) {
-                        lastWriteTimestamp = HAService.this.defaultMessageStore.getSystemClock().now();
                         readSizeZeroTimes = 0;
                         boolean result = this.dispatchReadRequest();
                         if (!result) {
@@ -459,10 +459,11 @@ public class HAService {
             int readSocketPos = this.byteBufferRead.position();
 
             while (true) {
-                int diff = this.byteBufferRead.position() - this.dispatchPostion;
-                if (diff >= msgHeaderSize) {//如果byteBufferRead未读字节数量超过msgHeaderSize
-                    long masterPhyOffset = this.byteBufferRead.getLong(this.dispatchPostion);//master当前发送的要同步数据，在master的中的位移
-                    int bodySize = this.byteBufferRead.getInt(this.dispatchPostion + 8);//body长度
+                int diff = this.byteBufferRead.position() - this.dispatchPosition;
+                //如果byteBufferRead未读字节数量超过msgHeaderSize
+                if (diff >= msgHeaderSize) {
+                    long masterPhyOffset = this.byteBufferRead.getLong(this.dispatchPosition);
+                    int bodySize = this.byteBufferRead.getInt(this.dispatchPosition + 8);
 
                     long slavePhyOffset = HAService.this.defaultMessageStore.getMaxPhyOffset();//获取slave当前最大的offset
                     //如果master要同步的数据位移和当前slave的最大位移不一致，则数据有错
@@ -476,13 +477,14 @@ public class HAService {
                     //如果byteBufferRead包含一个完整的消息(当前byteBufferRead的剩余空间能够容纳完整的header+body)
                     if (diff >= (msgHeaderSize + bodySize)) {
                         byte[] bodyData = new byte[bodySize];
-                        this.byteBufferRead.position(this.dispatchPostion + msgHeaderSize);
-                        this.byteBufferRead.get(bodyData);//读取body
+                        this.byteBufferRead.position(this.dispatchPosition + msgHeaderSize);
+                        //读取body
+                        this.byteBufferRead.get(bodyData);
 
                         HAService.this.defaultMessageStore.appendToCommitLog(masterPhyOffset, bodyData);
 
                         this.byteBufferRead.position(readSocketPos);
-                        this.dispatchPostion += msgHeaderSize + bodySize;
+                        this.dispatchPosition += msgHeaderSize + bodySize;
 
                         if (!reportSlaveMaxOffsetPlus()) {
                             return false;
@@ -557,7 +559,7 @@ public class HAService {
                 }
 
                 this.lastWriteTimestamp = 0;
-                this.dispatchPostion = 0;
+                this.dispatchPosition = 0;
 
                 this.byteBufferBackup.position(0);
                 this.byteBufferBackup.limit(READ_MAX_BUFFER_SIZE);

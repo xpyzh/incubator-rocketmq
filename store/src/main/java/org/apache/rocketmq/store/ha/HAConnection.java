@@ -98,14 +98,14 @@ public class HAConnection {
         private final SocketChannel socketChannel;
         private final ByteBuffer byteBufferRead = ByteBuffer.allocate(READ_MAX_BUFFER_SIZE);
         //记录byteBufferRead真正处理的position
-        private int processPostion = 0;
+        private int processPosition = 0;
         private volatile long lastReadTimestamp = System.currentTimeMillis();
 
         public ReadSocketService(final SocketChannel socketChannel) throws IOException {
             this.selector = RemotingUtil.openSelector();
             this.socketChannel = socketChannel;
             this.socketChannel.register(this.selector, SelectionKey.OP_READ);
-            this.thread.setDaemon(true);
+            this.setDaemon(true);
         }
 
         @Override
@@ -167,7 +167,7 @@ public class HAConnection {
             //如果byteBufferRead容量不够，则重置
             if (!this.byteBufferRead.hasRemaining()) {
                 this.byteBufferRead.flip();
-                this.processPostion = 0;
+                this.processPosition = 0;
             }
 
             while (this.byteBufferRead.hasRemaining()) {//因为byteBufferRead=1mb=1024byte*1024,正好可以被8字节整除,不用担心最后余量不足以从channel里写入一个long的情形
@@ -177,14 +177,15 @@ public class HAConnection {
                     if (readSize > 0) {
                         readSizeZeroTimes = 0;
                         this.lastReadTimestamp = HAConnection.this.haService.getDefaultMessageStore().getSystemClock().now();
-                        if ((this.byteBufferRead.position() - this.processPostion) >= 8) {//如果未处理的-已处理的位移大于8
+                        if ((this.byteBufferRead.position() - this.processPosition) >= 8) {
                             //计算当前可以读取完整long的最大位移
                             int pos = this.byteBufferRead.position() - (this.byteBufferRead.position() % 8);
                             //读取最后这个long
                             long readOffset = this.byteBufferRead.getLong(pos - 8);
-                            this.processPostion = pos;
-                            HAConnection.this.slaveAckOffset = readOffset;//当前slave同步的offset位置
-                            if (HAConnection.this.slaveRequestOffset < 0) {//如果slaveRequestOffset<=,则置为slave当前同步的offset位置
+                            this.processPosition = pos;
+
+                            HAConnection.this.slaveAckOffset = readOffset;
+                            if (HAConnection.this.slaveRequestOffset < 0) {
                                 HAConnection.this.slaveRequestOffset = readOffset;
                                 log.info("slave[" + HAConnection.this.clientAddr + "] request offset " + readOffset);
                             }
@@ -226,8 +227,9 @@ public class HAConnection {
             //一个channel单独一个selector
             this.selector = RemotingUtil.openSelector();
             this.socketChannel = socketChannel;
-            this.socketChannel.register(this.selector, SelectionKey.OP_WRITE);//注册write事件
-            this.thread.setDaemon(true);
+            //注册write事件
+            this.socketChannel.register(this.selector, SelectionKey.OP_WRITE);
+            this.setDaemon(true);
         }
 
         @Override
@@ -250,7 +252,7 @@ public class HAConnection {
                             masterOffset =
                                 masterOffset
                                     - (masterOffset % HAConnection.this.haService.getDefaultMessageStore().getMessageStoreConfig()
-                                    .getMapedFileSizeCommitLog());
+                                    .getMappedFileSizeCommitLog());
 
                             if (masterOffset < 0) {
                                 masterOffset = 0;
