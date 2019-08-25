@@ -100,7 +100,8 @@ public class NamesrvStartup {
                 in.close();
             }
         }
-        //解析参数:-p(废方法，没有传入log，打印不出来)
+        //解析参数:-p
+        //加上这个参数，只会在标准输出中打印生效的所有namesrv配置信息，不会真正启动namesrv
         if (commandLine.hasOption('p')) {
             InternalLogger console = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_CONSOLE_NAME);
             MixAll.printObjectProperties(console, namesrvConfig);
@@ -139,13 +140,13 @@ public class NamesrvStartup {
         if (null == controller) {
             throw new IllegalArgumentException("NamesrvController is null");
         }
-
+        // 初始化NamesrvController
         boolean initResult = controller.initialize();
         if (!initResult) {
             controller.shutdown();
             System.exit(-3);
         }
-
+        // 增加shutdown回调
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, new Callable<Void>() {
             @Override
             public Void call() throws Exception {

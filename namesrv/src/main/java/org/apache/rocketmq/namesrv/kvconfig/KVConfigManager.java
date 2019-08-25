@@ -169,6 +169,7 @@ public class KVConfigManager {
         return null;
     }
 
+    //打印KVConfigManager所有K-V信息，日志输出目录: ${user.home}/logs/rocketmqlogs/namesrv.log
     public void printAllPeriodically() {
         try {
             this.lock.readLock().lockInterruptibly();

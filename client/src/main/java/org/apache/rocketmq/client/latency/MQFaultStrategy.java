@@ -56,21 +56,29 @@ public class MQFaultStrategy {
     }
 
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
-        //todo:里面的逻辑有空看，默认是走if下面的逻辑
+        //如果sendLatencyFaultEnable=true
+        //1. 当一次消息发送(包含重试)的总时间超过550ms，则将该broker加入故障队列，一段时间消息发送不会路由到该broker的queue上
+        //2. 当一次消息发送失败(包含重试)，则将该broker加入故障队列，30s内消息发送不会路由到该broker的queue上
         if (this.sendLatencyFaultEnable) {
             try {
                 int index = tpInfo.getSendWhichQueue().getAndIncrement();
+                //对所有queue进行轮询，选出一个不在latencyFaultTolerance队列里的
                 for (int i = 0; i < tpInfo.getMessageQueueList().size(); i++) {
                     int pos = Math.abs(index++) % tpInfo.getMessageQueueList().size();
                     if (pos < 0)
                         pos = 0;
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
+                        //todo:这里有bug？
+                        //假设开启sendLatencyFaultEnable，考虑如下场景
+                        //1.第一次发送给brokerName=a 发送失败，a加入latencyFaultTolerance
+                        //2.紧接着消息重试，遍历所有queue，应该是找到和a不一样的queue进行尝试，而不是找到和a一样的queue进行尝试
+                        // if (null == lastBrokerName || !mq.getBrokerName().equals(lastBrokerName))
                         if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
                             return mq;
                     }
                 }
-
+                //如果所有的队列都不可用，则至少选择一个broker进行发送尝试
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {

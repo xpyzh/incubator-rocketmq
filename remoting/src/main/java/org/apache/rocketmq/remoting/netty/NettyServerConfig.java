@@ -28,6 +28,7 @@ public class NettyServerConfig implements Cloneable {
 
     private int serverSocketSndBufSize = NettySystemConfig.socketSndbufSize;
     private int serverSocketRcvBufSize = NettySystemConfig.socketRcvbufSize;
+    //建议开启
     private boolean serverPooledByteBufAllocatorEnable = true;
 
     /**
@@ -37,6 +38,7 @@ public class NettyServerConfig implements Cloneable {
      * ../glibc-2.10.1/configure \ --prefix=/usr \ --with-headers=/usr/include \
      * --host=x86_64-linux-gnu \ --build=x86_64-pc-linux-gnu \ --without-gd
      */
+    //建议linux环境下开启
     private boolean useEpollNativeSelector = false;
 
     public int getListenPort() {

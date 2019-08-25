@@ -586,9 +586,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                             callTimeout = true;
                             break;
                         }
-                        //内部实际的发送逻辑
+                        // 内部实际的发送逻辑
                         sendResult = this.sendKernelImpl(msg, mq, communicationMode, sendCallback, topicPublishInfo, timeout - costTime);
                         endTimestamp = System.currentTimeMillis();
+                        // 这里要注意，如果开启，则消息发送的总耗时超过550ms(这个总耗时包括同步模式下的重试发送总时间)，则该broker会被隔离30s
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, false);
                         switch (communicationMode) {
                             case ASYNC:
@@ -1239,9 +1240,12 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         Validators.checkMessage(msg, this.defaultMQProducer);
 
         SendResult sendResult = null;
+        //Message属性里添加标记，表名该消息为事务的prepare消息
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_TRANSACTION_PREPARED, "true");
+        //Message属性里添加producer的groupName，broker对事务消息的回查需要用producerGroupName来定位
         MessageAccessor.putProperty(msg, MessageConst.PROPERTY_PRODUCER_GROUP, this.defaultMQProducer.getProducerGroup());
         try {
+            //将这个prepare消息进行sync模式的发送
             sendResult = this.send(msg);
         } catch (Exception e) {
             throw new MQClientException("send message Exception", e);
@@ -1250,7 +1254,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         LocalTransactionState localTransactionState = LocalTransactionState.UNKNOW;
         Throwable localException = null;
         switch (sendResult.getSendStatus()) {
-            case SEND_OK: {
+            case SEND_OK: {//prepare消息发送成功
                 try {
                     if (sendResult.getTransactionId() != null) {
                         msg.putUserProperty("__transactionId__", sendResult.getTransactionId());
@@ -1263,6 +1267,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         localTransactionState = localTransactionExecuter.executeLocalTransactionBranch(msg, arg);
                     } else if (transactionListener != null) {
                         log.debug("Used new transaction API");
+                        //执行本地事务
                         localTransactionState = transactionListener.executeLocalTransaction(msg, arg);
                     }
                     if (null == localTransactionState) {
@@ -1274,6 +1279,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         log.info(msg.toString());
                     }
                 } catch (Throwable e) {
+                    //本地事务执行异常，则localTransactionState为默认的LocalTransactionState.UNKNOW
                     log.info("executeLocalTransactionBranch exception", e);
                     log.info(msg.toString());
                     localException = e;
@@ -1290,6 +1296,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         }
 
         try {
+            //告知broker，消息最终是提交或者回滚
             this.endTransaction(sendResult, localTransactionState, localException);
         } catch (Exception e) {
             log.warn("local transaction execute " + localTransactionState + ", but end broker transaction failed", e);
